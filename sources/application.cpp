@@ -1,10 +1,14 @@
 #include "application.hpp"
 
 #include <iostream>
+#include <cassert>
 
 namespace Limcore
 {
-	Application::Application(const VkInstance& instance) noexcept : instance(instance) {}
+	Application::Application(const VkInstance& instance) noexcept : instance(instance)
+	{
+		assert(instance != nullptr);
+	}
 
 	void Application::Destroy() noexcept
 	{
@@ -45,7 +49,7 @@ namespace Limcore
 
 		std::cout << "glfw initialized." << std::endl;
 
-		VkApplicationInfo applicationInfo;
+		VkApplicationInfo applicationInfo{};
 		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		applicationInfo.pApplicationName = "Limcore";
 		applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -67,12 +71,12 @@ namespace Limcore
 
 		std::cout << "Vulkan validation layers found: " << validationLayersFound << std::endl;
 
-		VkInstanceCreateInfo createInfo;
+		VkInstanceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		createInfo.enabledExtensionCount = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
 		createInfo.enabledLayerCount = validationLayersFound ? CUI(layers.size()) : 0;
-		createInfo.ppEnabledLayerNames = validationLayersFound ? layers.data() : nullptr;
+		createInfo.ppEnabledLayerNames = createInfo.enabledLayerCount > 0 ? layers.data() : nullptr;
 		createInfo.pApplicationInfo = &applicationInfo;
 
 		VkInstance instance = nullptr;

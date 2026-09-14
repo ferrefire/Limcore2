@@ -11,7 +11,7 @@ int main()
 		return (0);
 	}
 
-	VkInstance instance = result.value();
+	VkInstance instance = std::move(*result);
 
 	std::cout << "yahoo!" << std::endl;
 
