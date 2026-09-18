@@ -49,6 +49,15 @@ namespace Limcore
 
 		std::cout << "glfw initialized." << std::endl;
 
+		uint32_t instanceVersion = VK_API_VERSION_1_0;
+		PFN_vkEnumerateInstanceVersion pfnEnumerateInstanceVersion =
+			reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+		if (pfnEnumerateInstanceVersion) {pfnEnumerateInstanceVersion(&instanceVersion);}
+		std::cout << "Vulkan instance version: " << instanceVersion << " "
+			<< VK_API_VERSION_MAJOR(instanceVersion) << "."
+			<< VK_API_VERSION_MINOR(instanceVersion) << "."
+			<< VK_API_VERSION_PATCH(instanceVersion) << std::endl;
+
 		VkApplicationInfo applicationInfo{};
 		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		applicationInfo.pApplicationName = "Limcore";

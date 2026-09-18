@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vector>
+#include <iostream>
 
 namespace Limcore
 {
@@ -22,12 +23,25 @@ namespace Limcore
 	struct DeviceInfo
 	{
 		VkPhysicalDevice physicalDevice = nullptr;
-		VkPhysicalDeviceProperties2 properties{};
+		VkPhysicalDeviceProperties properties{};
 		VkPhysicalDeviceFeatures2 features{};
+		VkPhysicalDeviceVulkan12Features features2{};
 		VkPhysicalDeviceVulkan13Features features3{};
 		DeviceType type = DeviceType::Other;
 	};
 	
+	struct DeviceFeatures
+	{
+		bool tesselation = false;
+		bool anisotropic = false;
+		bool shaderDouble = false;
+		bool geometryShader = false;
+		bool depthBounds = false;
+		bool compressionBC = false;
+		bool multiDrawIndirect = false;
+		bool nonUniformIndexingShaderSampledImageArray = false;
+		bool synchronization2 = false;
+	};
 
 	class Device
 	{
@@ -35,8 +49,11 @@ namespace Limcore
 			VkPhysicalDevice physicalDevice = nullptr;
 			VkDevice logicalDevice = nullptr;
 
+			[[nodiscard]] Result<void> CreatePhysical(const VkInstance& instance, DeviceType type, DeviceFeatures features);
+			[[nodiscard]] Result<void> CreateLogical();
+
 		public:
-			Device() noexcept = default;
+			Device(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept;
 			~Device() noexcept {Destroy();}
 
 			Device(const Device&) = delete;
@@ -48,4 +65,9 @@ namespace Limcore
 	};
 
 	[[nodiscard]] std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance);
+	[[nodiscard]] Result<DeviceInfo> GetDevice(const VkInstance& instance, DeviceType type, DeviceFeatures features);
+
+	std::ostream& operator<<(std::ostream& out, const DeviceInfo& deviceInfo);
 }
+
+std::ostream& operator<<(std::ostream& out, const VkQueueFamilyProperties& queueFamilyProperties);
