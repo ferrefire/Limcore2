@@ -43,11 +43,11 @@ namespace Limcore
 	{
 		if (!glfwInit())
 		{
-			Error error{ErrorCode::GlfwError, "glfw initialization failed."};
+			Error error{ErrorCode::GlfwError, "glfw initialization failed"};
 			return (std::unexpected(error));
 		}
 
-		std::cout << "glfw initialized." << std::endl;
+		std::cout << "glfw initialized" << std::endl;
 
 		uint32_t instanceVersion = VK_API_VERSION_1_0;
 		PFN_vkEnumerateInstanceVersion pfnEnumerateInstanceVersion =
@@ -69,11 +69,7 @@ namespace Limcore
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		if (glfwExtensions == nullptr)
-		{
-			Error error{ErrorCode::GlfwError, "glfw required extensions not found."};
-			return (std::unexpected(error));
-		}
+		if (glfwExtensions == nullptr) {return (std::unexpected(Error(ErrorCode::GlfwError, "glfw required extensions not found")));}
 
 		std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
 		bool validationLayersFound = HasValidationLayers(layers);
@@ -90,13 +86,9 @@ namespace Limcore
 
 		VkInstance instance = nullptr;
 		VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-		if (result != VK_SUCCESS || instance == nullptr)
-		{
-			Error error{ErrorCode::VulkanError, std::string("Vulkan instance creation failed with result: ") + std::to_string(result)};
-			return (std::unexpected(error));
-		}
+		if (result != VK_SUCCESS || instance == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, std::string("Vulkan instance creation failed with result: ") + std::to_string(result))));}
 
-		std::cout << "Vulkan instance created." << std::endl;
+		std::cout << "Vulkan instance created" << std::endl;
 
 		return (instance);
 	}

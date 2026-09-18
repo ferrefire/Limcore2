@@ -53,13 +53,15 @@ namespace Limcore
 			[[nodiscard]] Result<void> CreateLogical();
 
 		public:
-			Device(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept;
+			Device() noexcept = default;
 			~Device() noexcept {Destroy();}
 
 			Device(const Device&) = delete;
 			Device& operator=(const Device&) = delete;
 
 			//Implement move operators.
+
+			[[nodiscard]] Result<void> Create(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept;
 
 			void Destroy() noexcept;
 	};

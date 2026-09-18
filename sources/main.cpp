@@ -1,5 +1,6 @@
 #include "application.hpp"
 #include "device.hpp"
+#include "window.hpp"
 
 #include <iostream>
 
@@ -24,11 +25,29 @@ int main()
 	vkGetPhysicalDeviceQueueFamilyProperties(availableDevices[1].physicalDevice, &queueCount, queueFamilies.data());
 	for (const VkQueueFamilyProperties& queueFamilyProperties : queueFamilies) {std::cout << queueFamilyProperties << std::endl;}
 
+	Limcore::WindowConfig windowConfig{};
+	Limcore::Window window;
+	auto windowCreation = window.Create(windowConfig, availableDevices[1].physicalDevice);
+	
+	if (windowCreation)
+	{
+		while (true)
+		{
+			glfwPollEvents();
+			if (window.ShouldClose()) {break;}
+		}
+		window.Destroy();
+	}
+	else
+	{
+		windowCreation.error().Print();
+	}
+
 	vkDestroyInstance(instance, nullptr);
 
 	glfwTerminate();
 
-	std::cout << "instance destroyed." << std::endl;
+	std::cout << "End" << std::endl;
 
 	return (0);
 }

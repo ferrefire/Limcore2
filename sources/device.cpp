@@ -8,9 +8,9 @@
 
 namespace Limcore
 {
-	Device::Device(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept
+	Result<void> Device::Create(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept
 	{
-
+		return (Result<void>());
 	}
 
 	Result<void> Device::CreatePhysical(const VkInstance& instance, DeviceType type, DeviceFeatures features)
