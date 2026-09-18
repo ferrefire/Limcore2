@@ -4,12 +4,18 @@
 
 namespace Limcore
 {
-	Result<void> Window::Create(WindowConfig config, const VkPhysicalDevice& physicalDevice)
+	Result<void> Window::Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig config)
 	{
+		assert(vulkanInstance != nullptr);
 		assert(physicalDevice != nullptr);
+
+		instance = vulkanInstance;
 
 		Result<void> frameCreation = CreateFrame(config);
 		if (!frameCreation) {return (std::unexpected(Error(frameCreation.error(), "Failed to create window")));}
+
+		Result<void> surfaceCreation = CreateSurface(physicalDevice, config);
+		if (!surfaceCreation) {return (std::unexpected(Error(surfaceCreation.error(), "Failed to create window")));}
 
 		return (Result<void>());
 	}
@@ -36,6 +42,19 @@ namespace Limcore
 		return (Result<void>());
 	}
 
+	Result<void> Window::CreateSurface(const VkPhysicalDevice& physicalDevice, WindowConfig& config)
+	{
+		assert(windowData != nullptr);
+		assert(surface == nullptr);
+
+		VkResult result = glfwCreateWindowSurface(instance, windowData, nullptr, &surface);
+		if (result != VK_SUCCESS || surface == nullptr) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create surface", result}));}
+
+		std::cout << "Window surface created" << std::endl;
+
+		return (Result<void>());
+	}
+
 	void Window::Destroy() noexcept
 	{
 		if (windowData != nullptr)
@@ -44,9 +63,22 @@ namespace Limcore
 			windowData = nullptr;
 			std::cout << "Window frame destroyed" << std::endl;
 		}
+
+		if (surface != nullptr)
+		{
+			vkDestroySurfaceKHR(instance, surface, nullptr);
+			surface = nullptr;
+			instance = nullptr;
+			std::cout << "Window surface destroyed" << std::endl;
+		}
 	}
 
-	bool Window::ShouldClose()
+	const VkSurfaceKHR& Window::GetSurface() const noexcept
+	{
+		return (surface);
+	}
+
+	bool Window::ShouldClose() const noexcept
 	{
 		if (windowData == nullptr) {return (true);}
 

@@ -8,16 +8,122 @@
 
 namespace Limcore
 {
-	Result<void> Device::Create(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept
+	Result<void> Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features) noexcept
 	{
+		assert(instance != nullptr);
+		assert(physicalDevice != nullptr);
+		assert(surface != nullptr);
+		assert(this->physicalDevice == nullptr);
+		assert(this->logicalDevice == nullptr);
+
+		this->physicalDevice = physicalDevice;
+
+		Result<void> logicalDeviceCreation = CreateLogical(surface, features);
+		if (!logicalDeviceCreation) {return (std::unexpected(Error(logicalDeviceCreation.error(), "Failed to create device")));}
+
 		return (Result<void>());
 	}
 
-	Result<void> Device::CreatePhysical(const VkInstance& instance, DeviceType type, DeviceFeatures features)
+	Result<void> Device::CreateLogical(const VkSurfaceKHR& surface, DeviceFeatures features)
 	{
-		assert(instance != nullptr);
+		assert(physicalDevice != nullptr);
+		assert(logicalDevice == nullptr);
+		assert(surface != nullptr);
+
+		uint32_t queueCount;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueFamilyProperties.data());
+		int queueFamilyIndex = -1;
+
+		for (size_t i = 0; i < queueCount; i++)
+		{
+			if (HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_GRAPHICS_BIT) &&
+				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_TRANSFER_BIT) &&
+				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_COMPUTE_BIT) &&
+				queueFamilyProperties[i].queueCount >= 4 &&
+				(queueFamilyIndex == -1 || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
+			{
+				VkBool32 canPresent = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
+				if (canPresent) {queueFamilyIndex = i;}
+			}
+		}
+
+		if (queueFamilyIndex == -1) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find a valid queue family")));}
+
+		std::cout << "Queue family selected" << std::endl;
+
+		std::vector<float> queuePriorities{1.0f, 1.0f, 1.0f, 1.0f};
+		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+		queueCreateInfo.queueCount = 4;
+		queueCreateInfo.pQueuePriorities = queuePriorities.data();
+		queueCreateInfos.push_back(queueCreateInfo);
+
+		VkPhysicalDeviceFeatures deviceFeaturesBase{};
+		if (features.tesselation) {deviceFeaturesBase.tessellationShader = VK_TRUE;}
+		if (features.anisotropic) {deviceFeaturesBase.samplerAnisotropy = VK_TRUE;}
+		if (features.shaderDouble) {deviceFeaturesBase.shaderFloat64 = VK_TRUE;}
+		if (features.geometryShader) {deviceFeaturesBase.geometryShader = VK_TRUE;}
+		if (features.fillModeNonSolid) {deviceFeaturesBase.fillModeNonSolid = VK_TRUE;}
+		if (features.depthBounds) {deviceFeaturesBase.depthBounds = VK_TRUE;}
+		if (features.compressionBC) {deviceFeaturesBase.textureCompressionBC = VK_TRUE;}
+		if (features.multiDrawIndirect) {deviceFeaturesBase.multiDrawIndirect = VK_TRUE;}
+
+		VkPhysicalDeviceVulkan13Features deviceFeatures3{};
+		deviceFeatures3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		if (features.synchronization2) {deviceFeatures3.synchronization2 = VK_TRUE;}
+
+		VkPhysicalDeviceVulkan12Features deviceFeatures2{};
+		deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		deviceFeatures2.pNext = &deviceFeatures3;
+		if (features.nonUniformIndexingShaderSampledImageArray) {deviceFeatures2.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;}
+
+		VkPhysicalDeviceVulkan11Features deviceFeatures1{};
+		deviceFeatures1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+		deviceFeatures1.pNext = &deviceFeatures2;
+		deviceFeatures1.shaderDrawParameters = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 deviceFeatures{};
+		deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		deviceFeatures.features = deviceFeaturesBase;
+		deviceFeatures.pNext = &deviceFeatures1;
+
+		std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+		VkDeviceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.queueCreateInfoCount = CUI(queueCreateInfos.size());
+		createInfo.pQueueCreateInfos = queueCreateInfos.data();
+		createInfo.pEnabledFeatures = nullptr;
+		createInfo.enabledExtensionCount = CUI(deviceExtensions.size());
+		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+		createInfo.pNext = &deviceFeatures;
+
+		VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice);
+		if (result != VK_SUCCESS || logicalDevice == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to create logical device", result)));}
+
+		std::cout << "Logical device created" << std::endl;
 
 		return (Result<void>());
+	}
+
+	void Device::Destroy() noexcept
+	{
+		if (physicalDevice != nullptr)
+		{
+			physicalDevice = nullptr;
+		}
+
+		if (logicalDevice != nullptr)
+		{
+			vkDestroyDevice(logicalDevice, nullptr);
+			logicalDevice = nullptr;
+			std::cout << "Logical device destroyed" << std::endl;
+		}
 	}
 
 	std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance)

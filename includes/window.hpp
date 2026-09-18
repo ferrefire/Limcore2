@@ -22,9 +22,12 @@ namespace Limcore
 	class Window
 	{
 		private:
+			VkInstance instance = nullptr;
 			GLFWwindow* windowData = nullptr;
+			VkSurfaceKHR surface = nullptr;
 
 			[[nodiscard]] Result<void> CreateFrame(WindowConfig& config);
+			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice, WindowConfig& config);
 
 		public:
 			Window() noexcept = default;
@@ -35,10 +38,12 @@ namespace Limcore
 
 			//Implement move operators.
 
-			[[nodiscard]] Result<void> Create(WindowConfig config, const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result<void> Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig config);
 
 			void Destroy() noexcept;
 
-			bool ShouldClose();
+			[[nodiscard]] const VkSurfaceKHR& GetSurface() const noexcept;
+
+			bool ShouldClose() const noexcept;
 	};
 }

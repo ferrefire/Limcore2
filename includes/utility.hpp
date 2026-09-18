@@ -1,5 +1,7 @@
 #pragma once
 
+#define CUI(a) static_cast<uint32_t>(a)
+
 namespace Limcore
 {
 	template <typename M, typename F>

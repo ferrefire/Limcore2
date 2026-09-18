@@ -41,6 +41,7 @@ namespace Limcore
 		bool multiDrawIndirect = false;
 		bool nonUniformIndexingShaderSampledImageArray = false;
 		bool synchronization2 = false;
+		bool fillModeNonSolid = false;
 	};
 
 	class Device
@@ -49,8 +50,8 @@ namespace Limcore
 			VkPhysicalDevice physicalDevice = nullptr;
 			VkDevice logicalDevice = nullptr;
 
-			[[nodiscard]] Result<void> CreatePhysical(const VkInstance& instance, DeviceType type, DeviceFeatures features);
-			[[nodiscard]] Result<void> CreateLogical();
+			[[nodiscard]] Result<void> CreateLogical(const VkSurfaceKHR& surface, DeviceFeatures features);
+			[[nodiscard]] Result<void> RetrieveQueues();
 
 		public:
 			Device() noexcept = default;
@@ -61,7 +62,7 @@ namespace Limcore
 
 			//Implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkInstance& instance, DeviceType type, DeviceFeatures features) noexcept;
+			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features) noexcept;
 
 			void Destroy() noexcept;
 	};

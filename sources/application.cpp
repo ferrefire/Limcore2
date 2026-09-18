@@ -1,5 +1,8 @@
 #include "application.hpp"
 
+#include "printer.hpp"
+#include "utility.hpp"
+
 #include <iostream>
 #include <cassert>
 
@@ -47,6 +50,8 @@ namespace Limcore
 			return (std::unexpected(error));
 		}
 
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
 		std::cout << "glfw initialized" << std::endl;
 
 		uint32_t instanceVersion = VK_API_VERSION_1_0;
@@ -86,7 +91,7 @@ namespace Limcore
 
 		VkInstance instance = nullptr;
 		VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-		if (result != VK_SUCCESS || instance == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, std::string("Vulkan instance creation failed with result: ") + std::to_string(result))));}
+		if (result != VK_SUCCESS || instance == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Vulkan instance creation failed", result)));}
 
 		std::cout << "Vulkan instance created" << std::endl;
 

@@ -7,8 +7,6 @@
 
 #include <vector>
 
-#define CUI(a) static_cast<uint32_t>(a)
-
 namespace Limcore
 {
 	class Application
