@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 
 namespace Limcore
 {
@@ -44,13 +45,24 @@ namespace Limcore
 		bool fillModeNonSolid = false;
 	};
 
+	enum class QueueType
+	{
+		Graphics,
+		Transfer,
+		Compute,
+		Present
+	};
+
 	class Device
 	{
 		private:
 			VkPhysicalDevice physicalDevice = nullptr;
 			VkDevice logicalDevice = nullptr;
+			int selectedQueueFamilyIndex = -1;
+			std::unordered_map<QueueType, VkQueue> queues;
 
-			[[nodiscard]] Result<void> CreateLogical(const VkSurfaceKHR& surface, DeviceFeatures features);
+			[[nodiscard]] Result<void> CreateLogical(DeviceFeatures features);
+			[[nodiscard]] Result<void> SelectQueues(const VkSurfaceKHR& surface);
 			[[nodiscard]] Result<void> RetrieveQueues();
 
 		public:

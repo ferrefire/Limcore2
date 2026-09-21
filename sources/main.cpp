@@ -30,8 +30,10 @@ int main()
 	auto windowCreation = window.Create(instance, availableDevices[1].physicalDevice, windowConfig);
 	if (!windowCreation) {windowCreation.error().Print();}
 
+	Limcore::DeviceFeatures deviceFeatures{};
+	deviceFeatures.synchronization2 = true;
 	Limcore::Device device;
-	auto deviceCreation = device.Create(instance, availableDevices[1].physicalDevice, window.GetSurface(), {});
+	auto deviceCreation = device.Create(instance, availableDevices[1].physicalDevice, window.GetSurface(), deviceFeatures);
 	if (!deviceCreation) {deviceCreation.error().Print();}
 	
 	while (true)

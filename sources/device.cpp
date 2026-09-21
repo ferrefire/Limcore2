@@ -18,47 +18,29 @@ namespace Limcore
 
 		this->physicalDevice = physicalDevice;
 
-		Result<void> logicalDeviceCreation = CreateLogical(surface, features);
+		Result<void> queueSelection = SelectQueues(surface);
+		if (!queueSelection) {return (std::unexpected(Error(queueSelection.error(), "Failed to create device")));}
+
+		Result<void> logicalDeviceCreation = CreateLogical(features);
 		if (!logicalDeviceCreation) {return (std::unexpected(Error(logicalDeviceCreation.error(), "Failed to create device")));}
+
+		Result<void> queueRetrieval = RetrieveQueues();
+		if (!queueRetrieval) {return (std::unexpected(Error(queueRetrieval.error(), "Failed to create device")));}
 
 		return (Result<void>());
 	}
 
-	Result<void> Device::CreateLogical(const VkSurfaceKHR& surface, DeviceFeatures features)
+	Result<void> Device::CreateLogical(DeviceFeatures features)
 	{
 		assert(physicalDevice != nullptr);
 		assert(logicalDevice == nullptr);
-		assert(surface != nullptr);
-
-		uint32_t queueCount;
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
-		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueFamilyProperties.data());
-		int queueFamilyIndex = -1;
-
-		for (size_t i = 0; i < queueCount; i++)
-		{
-			if (HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_GRAPHICS_BIT) &&
-				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_TRANSFER_BIT) &&
-				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_COMPUTE_BIT) &&
-				queueFamilyProperties[i].queueCount >= 4 &&
-				(queueFamilyIndex == -1 || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
-			{
-				VkBool32 canPresent = false;
-				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
-				if (canPresent) {queueFamilyIndex = i;}
-			}
-		}
-
-		if (queueFamilyIndex == -1) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find a valid queue family")));}
-
-		std::cout << "Queue family selected" << std::endl;
+		assert(selectedQueueFamilyIndex != -1);
 
 		std::vector<float> queuePriorities{1.0f, 1.0f, 1.0f, 1.0f};
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		VkDeviceQueueCreateInfo queueCreateInfo{};
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+		queueCreateInfo.queueFamilyIndex = selectedQueueFamilyIndex;
 		queueCreateInfo.queueCount = 4;
 		queueCreateInfo.pQueuePriorities = queuePriorities.data();
 		queueCreateInfos.push_back(queueCreateInfo);
@@ -111,12 +93,70 @@ namespace Limcore
 		return (Result<void>());
 	}
 
+	Result<void> Device::SelectQueues(const VkSurfaceKHR& surface)
+	{
+		assert(physicalDevice != nullptr);
+		assert(surface != nullptr);
+
+		uint32_t queueCount;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueFamilyProperties.data());
+		int queueFamilyIndex = -1;
+
+		for (size_t i = 0; i < queueCount; i++)
+		{
+			if (HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_GRAPHICS_BIT) &&
+				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_TRANSFER_BIT) &&
+				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_COMPUTE_BIT) &&
+				queueFamilyProperties[i].queueCount >= 4 &&
+				(queueFamilyIndex == -1 || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
+			{
+				VkBool32 canPresent = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
+				if (canPresent) {queueFamilyIndex = i;}
+			}
+		}
+
+		if (queueFamilyIndex == -1) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find a valid queue family")));}
+
+		selectedQueueFamilyIndex = queueFamilyIndex;
+
+		std::cout << "Queue family selected: " << selectedQueueFamilyIndex << std::endl;
+
+		return (Result<void>());
+	}
+
+	Result<void> Device::RetrieveQueues()
+	{
+		assert(logicalDevice != nullptr);
+		assert(selectedQueueFamilyIndex != -1);
+
+		queues[QueueType::Graphics] = nullptr;
+		queues[QueueType::Transfer] = nullptr;
+		queues[QueueType::Compute] = nullptr;
+		queues[QueueType::Present] = nullptr;
+
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 0, &queues[QueueType::Graphics]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 1, &queues[QueueType::Transfer]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 2, &queues[QueueType::Compute]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 3, &queues[QueueType::Present]);
+
+		if (queues[QueueType::Graphics] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve graphics queue")));}
+		if (queues[QueueType::Transfer] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve transfer queue")));}
+		if (queues[QueueType::Compute] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve compute queue")));}
+		if (queues[QueueType::Present] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve present queue")));}
+
+		return (Result<void>());
+	}
+
 	void Device::Destroy() noexcept
 	{
-		if (physicalDevice != nullptr)
-		{
-			physicalDevice = nullptr;
-		}
+		if (physicalDevice != nullptr) {physicalDevice = nullptr;}
+
+		if (selectedQueueFamilyIndex != -1) {selectedQueueFamilyIndex = -1;}
+
+		if (!queues.empty()) {queues.clear();}
 
 		if (logicalDevice != nullptr)
 		{
