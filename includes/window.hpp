@@ -6,28 +6,40 @@
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include <vector>
 
 namespace Limcore
 {
+	#define DEFAULT_PRESENT_MODE VK_PRESENT_MODE_FIFO_KHR
+	#define DEFAULT_SURFACE_FORMAT VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}
+
 	enum class WindowMode {Windowed, Fullscreen, Borderless};
 
 	struct WindowConfig
 	{
 		GLFWmonitor* monitor = nullptr;
 		WindowMode mode = WindowMode::Windowed;
+		VkPresentModeKHR presentMode = DEFAULT_PRESENT_MODE;
+		VkSurfaceFormatKHR surfaceFormat = DEFAULT_SURFACE_FORMAT;
 		uint32_t width = 0;
 		uint32_t height = 0;
+		bool log = false;
 	};
 	
 	class Window
 	{
 		private:
+			WindowConfig config = {};
 			VkInstance instance = nullptr;
 			GLFWwindow* windowData = nullptr;
 			VkSurfaceKHR surface = nullptr;
+			VkSwapchainKHR swapchain = nullptr;
 
-			[[nodiscard]] Result<void> CreateFrame(WindowConfig& config);
-			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice, WindowConfig& config);
+			[[nodiscard]] Result<void> CreateFrame();
+			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result<void> SelectPresentMode(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result<void> SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result<void> CreateSwapchain();
 
 		public:
 			Window() noexcept = default;
@@ -38,7 +50,7 @@ namespace Limcore
 
 			//Implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig config);
+			[[nodiscard]] Result<void> Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
 
 			void Destroy() noexcept;
 

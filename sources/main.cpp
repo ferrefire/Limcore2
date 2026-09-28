@@ -26,6 +26,8 @@ int main()
 	//for (const VkQueueFamilyProperties& queueFamilyProperties : queueFamilies) {std::cout << queueFamilyProperties << std::endl;}
 
 	Limcore::WindowConfig windowConfig{};
+	windowConfig.log = true;
+	windowConfig.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 	Limcore::Window window;
 	auto windowCreation = window.Create(instance, availableDevices[1].physicalDevice, windowConfig);
 	if (!windowCreation) {windowCreation.error().Print();}
