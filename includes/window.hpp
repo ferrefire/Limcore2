@@ -15,6 +15,7 @@ namespace Limcore
 
 	enum class WindowMode {Windowed, Fullscreen, Borderless};
 
+	//Todo: seperate window size and framebuffer size.
 	struct WindowConfig
 	{
 		GLFWmonitor* monitor = nullptr;
@@ -33,13 +34,11 @@ namespace Limcore
 			VkInstance instance = nullptr;
 			GLFWwindow* windowData = nullptr;
 			VkSurfaceKHR surface = nullptr;
-			VkSwapchainKHR swapchain = nullptr;
 
 			[[nodiscard]] Result<void> CreateFrame();
 			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice);
 			[[nodiscard]] Result<void> SelectPresentMode(const VkPhysicalDevice& physicalDevice);
 			[[nodiscard]] Result<void> SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice);
-			[[nodiscard]] Result<void> CreateSwapchain();
 
 		public:
 			Window() noexcept = default;
@@ -48,13 +47,14 @@ namespace Limcore
 			Window(const Window&) = delete;
 			Window& operator=(const Window&) = delete;
 
-			//Implement move operators.
+			//Todo: implement move operators.
 
 			[[nodiscard]] Result<void> Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
 
 			void Destroy() noexcept;
 
-			[[nodiscard]] const VkSurfaceKHR& GetSurface() const noexcept;
+			[[nodiscard]] const VkSurfaceKHR& GetSurface() const noexcept {return (surface);}
+			[[nodiscard]] const WindowConfig& GetConfig() const noexcept {return (config);}
 
 			bool ShouldClose() const noexcept;
 	};

@@ -98,7 +98,7 @@ namespace Limcore
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
 
-		uint32_t queueCount;
+		uint32_t queueCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueFamilyProperties.data());

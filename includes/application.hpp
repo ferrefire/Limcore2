@@ -21,7 +21,7 @@ namespace Limcore
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 
-			//Implement move operators.
+			//Todo: implement move operators.
 
 			void Destroy() noexcept;
 	};

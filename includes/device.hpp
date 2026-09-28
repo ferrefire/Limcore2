@@ -62,7 +62,7 @@ namespace Limcore
 			std::unordered_map<QueueType, VkQueue> queues;
 
 			[[nodiscard]] Result<void> CreateLogical(DeviceFeatures features);
-			[[nodiscard]] Result<void> SelectQueues(const VkSurfaceKHR& surface);
+			[[nodiscard]] Result<void> SelectQueues(const VkSurfaceKHR& surface); //Todo: add manual selection and better auto selection.
 			[[nodiscard]] Result<void> RetrieveQueues();
 
 		public:
@@ -72,11 +72,14 @@ namespace Limcore
 			Device(const Device&) = delete;
 			Device& operator=(const Device&) = delete;
 
-			//Implement move operators.
+			//Todo: implement move operators.
 
 			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features) noexcept;
 
 			void Destroy() noexcept;
+
+			[[nodiscard]] const VkPhysicalDevice& GetPhysicalDevice() const noexcept {return (physicalDevice);}
+			[[nodiscard]] const VkDevice& GetLogicalDevice() const noexcept {return (logicalDevice);}
 	};
 
 	[[nodiscard]] std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance);

@@ -68,7 +68,7 @@ namespace Limcore
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
 
-		uint32_t presentModeCount;
+		uint32_t presentModeCount = 0;
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
 		std::vector<VkPresentModeKHR> availablePresentModes(presentModeCount);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
@@ -112,7 +112,7 @@ namespace Limcore
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
 
-		uint32_t availableSurfaceFormatCount;
+		uint32_t availableSurfaceFormatCount = 0;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &availableSurfaceFormatCount, nullptr);
 		std::vector<VkSurfaceFormatKHR> availableSurfaceFormats(availableSurfaceFormatCount);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &availableSurfaceFormatCount, availableSurfaceFormats.data());
@@ -156,11 +156,6 @@ namespace Limcore
 		return (Result<void>());
 	}
 
-	Result<void> Window::CreateSwapchain()
-	{
-
-	}
-
 	void Window::Destroy() noexcept
 	{
 		if (windowData != nullptr)
@@ -177,11 +172,6 @@ namespace Limcore
 			instance = nullptr;
 			if (config.log) {std::cout << "Window surface destroyed" << std::endl;}
 		}
-	}
-
-	const VkSurfaceKHR& Window::GetSurface() const noexcept
-	{
-		return (surface);
 	}
 
 	bool Window::ShouldClose() const noexcept
