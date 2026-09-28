@@ -143,4 +143,14 @@ namespace Limcore
 
 		logicalDevice = nullptr;
 	}
+
+	bool Viewport::IsValid() const noexcept
+	{
+		if (logicalDevice == nullptr) {return (false);}
+		if (swapchain == nullptr) {return (false);}
+		if (images.empty()) {return (false);}
+		if (views.empty()) {return (false);}
+
+		return (true);
+	}
 }

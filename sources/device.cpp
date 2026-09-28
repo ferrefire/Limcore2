@@ -166,6 +166,16 @@ namespace Limcore
 		}
 	}
 
+	bool Device::IsValid() const noexcept
+	{
+		if (physicalDevice == nullptr) {return (false);}
+		if (logicalDevice == nullptr) {return (false);}
+		if (selectedQueueFamilyIndex == -1) {return (false);}
+		if (queues.empty()) {return (false);}
+
+		return (true);
+	}
+
 	std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance)
 	{
 		assert(instance != nullptr);

@@ -53,6 +53,7 @@ namespace Limcore
 
 			void Destroy() noexcept;
 
+			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkSurfaceKHR& GetSurface() const noexcept {return (surface);}
 			[[nodiscard]] const WindowConfig& GetConfig() const noexcept {return (config);}
 

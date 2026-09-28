@@ -78,6 +78,7 @@ namespace Limcore
 
 			void Destroy() noexcept;
 
+			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkPhysicalDevice& GetPhysicalDevice() const noexcept {return (physicalDevice);}
 			[[nodiscard]] const VkDevice& GetLogicalDevice() const noexcept {return (logicalDevice);}
 	};

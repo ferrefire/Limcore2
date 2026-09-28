@@ -35,6 +35,7 @@ namespace Limcore
 
 			void Destroy() noexcept;
 
+			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkSwapchainKHR& GetSwapchain() const noexcept {return (swapchain);}
 	};
 }
