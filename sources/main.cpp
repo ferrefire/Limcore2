@@ -10,6 +10,12 @@ int main()
 	VkInstance instance = Limcore::CreateInstance().value();
 
 	std::vector<Limcore::DeviceInfo> availableDevices = Limcore::GetAvailableDevices(instance);
+	for (const Limcore::DeviceInfo& deviceInfo : availableDevices) {std::cout << deviceInfo << std::endl;}
+
+	vkDestroyInstance(instance, nullptr);
+	glfwTerminate();
+	return(0);
+
 
 	Limcore::WindowConfig windowConfig{};
 	windowConfig.log = true;

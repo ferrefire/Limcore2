@@ -8,7 +8,7 @@ namespace Limcore
 {
 	Result<void> Viewport::Create(const Device& device, const Window& window, bool log)
 	{
-		assert(device.GetLogicalDevice() != nullptr);
+		assert(device.IsValid());
 
 		this->log = log;
 		logicalDevice = device.GetLogicalDevice();
@@ -22,14 +22,16 @@ namespace Limcore
 		Result<void> viewsCreation = CreateViews(window);
 		if (!viewsCreation) {return (std::unexpected(Error(viewsCreation.error(), "Failed to create viewport")));}
 
+		Result<void> semaphoresCreation = CreateSemaphores();
+		if (!semaphoresCreation) {return (std::unexpected(Error(semaphoresCreation.error(), "Failed to create viewport")));}
+
 		return (Result<void>());
 	}
 
 	Result<void> Viewport::CreateSwapchain(const Device& device, const Window& window)
 	{
-		assert(device.GetPhysicalDevice() != nullptr);
-		assert(device.GetLogicalDevice() != nullptr);
-		assert(window.GetSurface() != nullptr);
+		assert(device.IsValid());
+		assert(window.IsValid());
 
 		const WindowConfig& windowConfig = window.GetConfig();
 
@@ -121,9 +123,37 @@ namespace Limcore
 		return (Result<void>());
 	}
 
+	Result<void> Viewport::CreateSemaphores()
+	{
+		assert(logicalDevice != nullptr);
+		assert(presentSemaphores.empty());
+
+		presentSemaphores.resize(images.size());
+
+		VkSemaphoreCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		for (size_t i = 0; i < presentSemaphores.size(); i++)
+		{
+			VkResult result = vkCreateSemaphore(logicalDevice, &createInfo, nullptr, &presentSemaphores[i]);
+			if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create semaphores", result}));}
+		}
+
+		if (log) {std::cout << "Viewport semaphores created" << std::endl;}
+
+		return (Result<void>());
+	}
+
 	void Viewport::Destroy() noexcept
 	{
 		if (logicalDevice == nullptr) {return;}
+
+		if (!presentSemaphores.empty())
+		{
+			for (VkSemaphore& semaphore : presentSemaphores) {vkDestroySemaphore(logicalDevice, semaphore, nullptr);}
+			presentSemaphores.clear();
+			if (log) {std::cout << "Viewport semaphores destroyed" << std::endl;}
+		}
 
 		if (!views.empty())
 		{

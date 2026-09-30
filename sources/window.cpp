@@ -179,6 +179,8 @@ namespace Limcore
 		if (instance == nullptr) {return (false);}
 		if (windowData == nullptr) {return (false);}
 		if (surface == nullptr) {return (false);}
+
+		return (true);
 	}
 
 	bool Window::ShouldClose() const noexcept

@@ -16,11 +16,13 @@ namespace Limcore
 			VkSwapchainKHR swapchain = nullptr;
 			std::vector<VkImage> images;
 			std::vector<VkImageView> views;
+			std::vector<VkSemaphore> presentSemaphores;
 			bool log = false;
 
 			[[nodiscard]] Result<void> CreateSwapchain(const Device& device, const Window& window);
 			[[nodiscard]] Result<void> RetrieveImages();
 			[[nodiscard]] Result<void> CreateViews(const Window& window);
+			[[nodiscard]] Result<void> CreateSemaphores();
 
 		public:
 			Viewport() noexcept = default;
