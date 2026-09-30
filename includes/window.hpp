@@ -30,10 +30,12 @@ namespace Limcore
 	class Window
 	{
 		private:
-			WindowConfig config = {};
 			VkInstance instance = nullptr;
 			GLFWwindow* windowData = nullptr;
 			VkSurfaceKHR surface = nullptr;
+
+			WindowConfig config{};
+			
 
 			[[nodiscard]] Result<void> CreateFrame();
 			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice);
@@ -59,4 +61,6 @@ namespace Limcore
 
 			bool ShouldClose() const noexcept;
 	};
+
+	std::ostream& operator<<(std::ostream& out, const Window& window);
 }

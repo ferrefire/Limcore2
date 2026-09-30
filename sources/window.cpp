@@ -189,4 +189,18 @@ namespace Limcore
 
 		return (glfwWindowShouldClose(windowData));
 	}
+
+	std::ostream& operator<<(std::ostream& out, const Window& window)
+	{
+		const WindowConfig& config = window.GetConfig();
+
+		out << ENUM_VAL(config.mode) << std::endl;
+		out << ENUM_VAL(config.presentMode) << std::endl;
+		out << ENUM_VAL(config.surfaceFormat.format) << std::endl;
+		out << ENUM_VAL(config.surfaceFormat.colorSpace) << std::endl;
+		out << VAR_VAL(config.width) << std::endl;
+		out << VAR_VAL(config.height) << std::endl;
+
+		return (out);
+	}
 }

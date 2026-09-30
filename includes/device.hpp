@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.hpp"
+#include "window.hpp"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -11,6 +12,8 @@
 
 namespace Limcore
 {
+	#define NO_QUEUE_FAMILY UINT32_MAX
+
 	enum class DeviceType
 	{
 		Other = VK_PHYSICAL_DEVICE_TYPE_OTHER,
@@ -43,6 +46,7 @@ namespace Limcore
 		bool nonUniformIndexingShaderSampledImageArray = false;
 		bool synchronization2 = false;
 		bool fillModeNonSolid = false;
+		bool dynamicRendering = false;
 	};
 
 	enum class QueueType
@@ -58,8 +62,10 @@ namespace Limcore
 		private:
 			VkPhysicalDevice physicalDevice = nullptr;
 			VkDevice logicalDevice = nullptr;
-			int selectedQueueFamilyIndex = -1;
+			uint32_t selectedQueueFamilyIndex = NO_QUEUE_FAMILY;
+			bool separateQueues = true;
 			std::unordered_map<QueueType, VkQueue> queues;
+			bool log = false;
 
 			[[nodiscard]] Result<void> CreateLogical(DeviceFeatures features);
 			[[nodiscard]] Result<void> SelectQueues(const VkSurfaceKHR& surface); //Todo: add manual selection and better auto selection.
@@ -74,13 +80,17 @@ namespace Limcore
 
 			//Todo: implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features) noexcept;
+			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log = false) noexcept;
+			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const Window& window, DeviceFeatures features, bool log = false) noexcept
+				{return (Create(instance, physicalDevice, window.GetSurface(), features, log));}
 
 			void Destroy() noexcept;
 
 			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkPhysicalDevice& GetPhysicalDevice() const noexcept {return (physicalDevice);}
 			[[nodiscard]] const VkDevice& GetLogicalDevice() const noexcept {return (logicalDevice);}
+			[[nodiscard]] const uint32_t& GetSelectedQueueFamily() const noexcept {return (selectedQueueFamilyIndex);}
+			[[nodiscard]] const VkQueue& GetQueue(QueueType type) const noexcept {return (queues.at(type));}
 	};
 
 	[[nodiscard]] std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance);

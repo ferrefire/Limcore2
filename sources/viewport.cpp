@@ -6,20 +6,22 @@
 
 namespace Limcore
 {
-	Result<void> Viewport::Create(const Device& device, const Window& window, bool log)
+	Result<void> Viewport::Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log)
 	{
-		assert(device.IsValid());
+		assert(logicalDevice != nullptr);
+		assert(physicalDevice != nullptr);
+		assert(surface != nullptr);
 
 		this->log = log;
-		logicalDevice = device.GetLogicalDevice();
+		this->logicalDevice = logicalDevice;
 
-		Result<void> swapchainCreation = CreateSwapchain(device, window);
+		Result<void> swapchainCreation = CreateSwapchain(physicalDevice, surface, windowConfig);
 		if (!swapchainCreation) {return (std::unexpected(Error(swapchainCreation.error(), "Failed to create viewport")));}
 
 		Result<void> imagesRetrieval = RetrieveImages();
 		if (!imagesRetrieval) {return (std::unexpected(Error(imagesRetrieval.error(), "Failed to create viewport")));}
 
-		Result<void> viewsCreation = CreateViews(window);
+		Result<void> viewsCreation = CreateViews(windowConfig);
 		if (!viewsCreation) {return (std::unexpected(Error(viewsCreation.error(), "Failed to create viewport")));}
 
 		Result<void> semaphoresCreation = CreateSemaphores();
@@ -28,29 +30,28 @@ namespace Limcore
 		return (Result<void>());
 	}
 
-	Result<void> Viewport::CreateSwapchain(const Device& device, const Window& window)
+	Result<void> Viewport::CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig)
 	{
-		assert(device.IsValid());
-		assert(window.IsValid());
-
-		const WindowConfig& windowConfig = window.GetConfig();
+		assert(physicalDevice != nullptr);
+		assert(surface != nullptr);
 
 		VkSurfaceCapabilitiesKHR surfaceCapabilities;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.GetPhysicalDevice(), window.GetSurface(), &surfaceCapabilities);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
 
 		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
 		if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {imageCount = surfaceCapabilities.maxImageCount;}
 
-		VkExtent2D extent = surfaceCapabilities.currentExtent;
-		if (extent.width == UINT32_MAX || extent.height == UINT32_MAX)
+		VkExtent2D windowExtent = surfaceCapabilities.currentExtent;
+		if (windowExtent.width == UINT32_MAX || windowExtent.height == UINT32_MAX)
 		{
-			extent.width = std::clamp(windowConfig.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-			extent.height = std::clamp(windowConfig.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+			windowExtent.width = std::clamp(windowConfig.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+			windowExtent.height = std::clamp(windowConfig.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 		}
+		extent = windowExtent;
 
 		VkSwapchainCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = window.GetSurface();
+		createInfo.surface = surface;
 		createInfo.minImageCount = imageCount;
 		createInfo.imageFormat = windowConfig.surfaceFormat.format;
 		createInfo.imageColorSpace = windowConfig.surfaceFormat.colorSpace;
@@ -66,7 +67,7 @@ namespace Limcore
 		createInfo.clipped = VK_TRUE;
 		createInfo.oldSwapchain = nullptr;
 
-		VkResult result = vkCreateSwapchainKHR(device.GetLogicalDevice(), &createInfo, nullptr, &swapchain);
+		VkResult result = vkCreateSwapchainKHR(logicalDevice, &createInfo, nullptr, &swapchain);
 		if (result != VK_SUCCESS || swapchain == nullptr) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create swapchain", result}));}
 
 		if (log) {std::cout << "Viewport swapchain created" << std::endl;}
@@ -92,7 +93,7 @@ namespace Limcore
 		return (Result<void>());
 	}
 
-	Result<void> Viewport::CreateViews(const Window& window)
+	Result<void> Viewport::CreateViews(const WindowConfig& windowConfig)
 	{
 		assert(logicalDevice != nullptr);
 		assert(!images.empty());
@@ -103,7 +104,7 @@ namespace Limcore
 		VkImageViewCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = window.GetConfig().surfaceFormat.format;
+		createInfo.format = windowConfig.surfaceFormat.format;
 		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		createInfo.subresourceRange.baseMipLevel = 0;
 		createInfo.subresourceRange.levelCount = 1;
@@ -126,16 +127,16 @@ namespace Limcore
 	Result<void> Viewport::CreateSemaphores()
 	{
 		assert(logicalDevice != nullptr);
-		assert(presentSemaphores.empty());
+		assert(canPresentSemaphores.empty());
 
-		presentSemaphores.resize(images.size());
+		canPresentSemaphores.resize(images.size());
 
 		VkSemaphoreCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		for (size_t i = 0; i < presentSemaphores.size(); i++)
+		for (size_t i = 0; i < canPresentSemaphores.size(); i++)
 		{
-			VkResult result = vkCreateSemaphore(logicalDevice, &createInfo, nullptr, &presentSemaphores[i]);
+			VkResult result = vkCreateSemaphore(logicalDevice, &createInfo, nullptr, &canPresentSemaphores[i]);
 			if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create semaphores", result}));}
 		}
 
@@ -148,10 +149,12 @@ namespace Limcore
 	{
 		if (logicalDevice == nullptr) {return;}
 
-		if (!presentSemaphores.empty())
+		vkDeviceWaitIdle(logicalDevice);
+
+		if (!canPresentSemaphores.empty())
 		{
-			for (VkSemaphore& semaphore : presentSemaphores) {vkDestroySemaphore(logicalDevice, semaphore, nullptr);}
-			presentSemaphores.clear();
+			for (VkSemaphore& semaphore : canPresentSemaphores) {vkDestroySemaphore(logicalDevice, semaphore, nullptr);}
+			canPresentSemaphores.clear();
 			if (log) {std::cout << "Viewport semaphores destroyed" << std::endl;}
 		}
 

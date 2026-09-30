@@ -8,7 +8,7 @@
 
 namespace Limcore
 {
-	Result<void> Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features) noexcept
+	Result<void> Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log) noexcept
 	{
 		assert(instance != nullptr);
 		assert(physicalDevice != nullptr);
@@ -16,6 +16,7 @@ namespace Limcore
 		assert(this->physicalDevice == nullptr);
 		assert(this->logicalDevice == nullptr);
 
+		this->log = log;
 		this->physicalDevice = physicalDevice;
 
 		Result<void> queueSelection = SelectQueues(surface);
@@ -34,14 +35,14 @@ namespace Limcore
 	{
 		assert(physicalDevice != nullptr);
 		assert(logicalDevice == nullptr);
-		assert(selectedQueueFamilyIndex != -1);
+		assert(selectedQueueFamilyIndex != NO_QUEUE_FAMILY);
 
 		std::vector<float> queuePriorities{1.0f, 1.0f, 1.0f, 1.0f};
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		VkDeviceQueueCreateInfo queueCreateInfo{};
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.queueFamilyIndex = selectedQueueFamilyIndex;
-		queueCreateInfo.queueCount = 4;
+		queueCreateInfo.queueCount = (separateQueues ? 4 : 1);
 		queueCreateInfo.pQueuePriorities = queuePriorities.data();
 		queueCreateInfos.push_back(queueCreateInfo);
 
@@ -58,6 +59,7 @@ namespace Limcore
 		VkPhysicalDeviceVulkan13Features deviceFeatures3{};
 		deviceFeatures3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		if (features.synchronization2) {deviceFeatures3.synchronization2 = VK_TRUE;}
+		if (features.dynamicRendering) {deviceFeatures3.dynamicRendering = VK_TRUE;}
 
 		VkPhysicalDeviceVulkan12Features deviceFeatures2{};
 		deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -88,7 +90,7 @@ namespace Limcore
 		VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice);
 		if (result != VK_SUCCESS || logicalDevice == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to create logical device", result)));}
 
-		std::cout << "Logical device created" << std::endl;
+		if (log) {std::cout << "Logical device created" << std::endl;}
 
 		return (Result<void>());
 	}
@@ -102,15 +104,15 @@ namespace Limcore
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueFamilyProperties.data());
-		int queueFamilyIndex = -1;
+		uint32_t queueFamilyIndex = NO_QUEUE_FAMILY;
+		separateQueues = true;
 
 		for (size_t i = 0; i < queueCount; i++)
 		{
 			if (HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_GRAPHICS_BIT) &&
 				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_TRANSFER_BIT) &&
 				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_COMPUTE_BIT) &&
-				queueFamilyProperties[i].queueCount >= 4 &&
-				(queueFamilyIndex == -1 || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
+				(queueFamilyIndex == NO_QUEUE_FAMILY || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
 			{
 				VkBool32 canPresent = false;
 				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
@@ -118,11 +120,22 @@ namespace Limcore
 			}
 		}
 
-		if (queueFamilyIndex == -1) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find a valid queue family")));}
+		if (queueFamilyIndex == NO_QUEUE_FAMILY)
+		{
+			std::cerr << "Available queue families: " << std::endl;
+			for (const VkQueueFamilyProperties& properties : queueFamilyProperties) {std::cerr << properties << std::endl;}
+
+			return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find a valid queue family")));
+		}
+
+		if (queueFamilyProperties[queueFamilyIndex].queueCount < 4)
+		{
+			std::cerr << "Separate queues support not found. Falling back to single queue use." << std::endl;
+			separateQueues = false;
+		}
 
 		selectedQueueFamilyIndex = queueFamilyIndex;
-
-		std::cout << "Queue family selected: " << selectedQueueFamilyIndex << std::endl;
+		if (log) {std::cout << "Queue family selected: " << selectedQueueFamilyIndex << std::endl;}
 
 		return (Result<void>());
 	}
@@ -130,17 +143,18 @@ namespace Limcore
 	Result<void> Device::RetrieveQueues()
 	{
 		assert(logicalDevice != nullptr);
-		assert(selectedQueueFamilyIndex != -1);
+		assert(selectedQueueFamilyIndex != NO_QUEUE_FAMILY);
 
 		queues[QueueType::Graphics] = nullptr;
 		queues[QueueType::Transfer] = nullptr;
 		queues[QueueType::Compute] = nullptr;
 		queues[QueueType::Present] = nullptr;
 
-		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 0, &queues[QueueType::Graphics]);
-		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 1, &queues[QueueType::Transfer]);
-		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 2, &queues[QueueType::Compute]);
-		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, 3, &queues[QueueType::Present]);
+		int queueIndex = -1;
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, (separateQueues ? ++queueIndex : 0), &queues[QueueType::Graphics]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, (separateQueues ? ++queueIndex : 0), &queues[QueueType::Transfer]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, (separateQueues ? ++queueIndex : 0), &queues[QueueType::Compute]);
+		vkGetDeviceQueue(logicalDevice, selectedQueueFamilyIndex, (separateQueues ? ++queueIndex : 0), &queues[QueueType::Present]);
 
 		if (queues[QueueType::Graphics] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve graphics queue")));}
 		if (queues[QueueType::Transfer] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve transfer queue")));}
@@ -154,7 +168,7 @@ namespace Limcore
 	{
 		if (physicalDevice != nullptr) {physicalDevice = nullptr;}
 
-		if (selectedQueueFamilyIndex != -1) {selectedQueueFamilyIndex = -1;}
+		if (selectedQueueFamilyIndex != NO_QUEUE_FAMILY) {selectedQueueFamilyIndex = NO_QUEUE_FAMILY;}
 
 		if (!queues.empty()) {queues.clear();}
 
@@ -162,7 +176,7 @@ namespace Limcore
 		{
 			vkDestroyDevice(logicalDevice, nullptr);
 			logicalDevice = nullptr;
-			std::cout << "Logical device destroyed" << std::endl;
+			if (log) {std::cout << "Logical device destroyed" << std::endl;}
 		}
 	}
 
@@ -170,7 +184,7 @@ namespace Limcore
 	{
 		if (physicalDevice == nullptr) {return (false);}
 		if (logicalDevice == nullptr) {return (false);}
-		if (selectedQueueFamilyIndex == -1) {return (false);}
+		if (selectedQueueFamilyIndex == NO_QUEUE_FAMILY) {return (false);}
 		if (queues.empty()) {return (false);}
 
 		return (true);
@@ -210,6 +224,26 @@ namespace Limcore
 	{
 		assert(instance != nullptr);
 
+		if (type == DeviceType::Best)
+		{
+			auto discreteSearch = GetDevice(instance, DeviceType::Discrete, features);
+			if (discreteSearch) {return (discreteSearch);}
+
+			auto integratedSearch = GetDevice(instance, DeviceType::Integrated, features);
+			if (integratedSearch) {return (integratedSearch);}
+
+			auto virtualSearch = GetDevice(instance, DeviceType::Virtual, features);
+			if (virtualSearch) {return (virtualSearch);}
+
+			auto cpuSearch = GetDevice(instance, DeviceType::CPU, features);
+			if (cpuSearch) {return (cpuSearch);}
+
+			auto otherSearch = GetDevice(instance, DeviceType::Other, features);
+			if (otherSearch) {return (otherSearch);}
+
+			return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find specified device.")));
+		}
+
 		std::vector<DeviceInfo> availableDevices = GetAvailableDevices(instance);
 
 		for (size_t i = 0; i < availableDevices.size(); i++)
@@ -227,12 +261,12 @@ namespace Limcore
 			if (features.multiDrawIndirect && !features1.multiDrawIndirect) {continue;}
 			if (features.nonUniformIndexingShaderSampledImageArray && !features2.shaderSampledImageArrayNonUniformIndexing) {continue;}
 			if (features.synchronization2 && !features3.synchronization2) {continue;}
+			if (features.dynamicRendering && !features3.dynamicRendering) {continue;}
 
 			return (availableDevices[i]);
 		}
 
-		Error error{ErrorCode::VulkanError, "Failed to find specified device."};
-		return (std::unexpected(error));
+		return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to find specified device.")));
 	}
 
 	std::ostream& operator<<(std::ostream& out, const DeviceInfo& deviceInfo)
