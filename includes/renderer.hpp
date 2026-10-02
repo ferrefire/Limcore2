@@ -35,10 +35,10 @@ namespace Limcore
 
 			uint32_t frameIndex = 0;
 
-			[[nodiscard]] Result<void> CreateFences();
-			[[nodiscard]] Result<void> CreateSemaphores();
-			[[nodiscard]] Result<void> CreateCommandPools(const uint32_t& queueFamilyIndex);
-			[[nodiscard]] Result<void> AllocateCommandBuffers();
+			[[nodiscard]] Result CreateFences();
+			[[nodiscard]] Result CreateSemaphores();
+			[[nodiscard]] Result CreateCommandPools(const uint32_t& queueFamilyIndex);
+			[[nodiscard]] Result AllocateCommandBuffers();
 
 			void TransitionToColor(const VkImage& image, bool undefined = false); //Todo: make a dynamic version in the image class.
 			void TransitionToPresent(const VkImage& image);
@@ -50,19 +50,22 @@ namespace Limcore
 			Renderer(const Renderer&) = delete;
 			Renderer& operator=(const Renderer&) = delete;
 
-			[[nodiscard]] Result<void> Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig);
-			[[nodiscard]] Result<void> Create(const Device& device, RendererConfig rendererConfig)
-				{return (Create(device.GetLogicalDevice(), device.GetSelectedQueueFamily(), rendererConfig));}
-
 			//Todo: implement move operators.
+
+			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig);
+			[[nodiscard]] Result Create(const Device& device, RendererConfig rendererConfig)
+				{return (Create(device.GetLogicalDevice(), device.GetSelectedQueueFamily(), rendererConfig));}
 
 			void Destroy() noexcept;
 
-			Result<void> WaitForFrame();
-			Result<void> RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false);
-			Result<void> RecordCommands(const Viewport& viewport, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false)
+			Result WaitForFrame();
+			//Result BeginFrame();
+			//Result EndFrame();
+
+			Result RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false);
+			Result RecordCommands(const Viewport& viewport, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false)
 				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), graphicsQueue, presentQueue, start));}
-			Result<void> RecordCommands(const Viewport& viewport, const Device& device, bool start = false)
+			Result RecordCommands(const Viewport& viewport, const Device& device, bool start = false)
 				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), device.GetQueue(QueueType::Graphics), device.GetQueue(QueueType::Present), start));}
 	};
 }

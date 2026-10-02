@@ -6,7 +6,7 @@
 
 namespace Limcore
 {
-	Result<void> Viewport::Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log)
+	Result Viewport::Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log)
 	{
 		assert(logicalDevice != nullptr);
 		assert(physicalDevice != nullptr);
@@ -15,22 +15,22 @@ namespace Limcore
 		this->log = log;
 		this->logicalDevice = logicalDevice;
 
-		Result<void> swapchainCreation = CreateSwapchain(physicalDevice, surface, windowConfig);
+		Result swapchainCreation = CreateSwapchain(physicalDevice, surface, windowConfig);
 		if (!swapchainCreation) {return (std::unexpected(Error(swapchainCreation.error(), "Failed to create viewport")));}
 
-		Result<void> imagesRetrieval = RetrieveImages();
+		Result imagesRetrieval = RetrieveImages();
 		if (!imagesRetrieval) {return (std::unexpected(Error(imagesRetrieval.error(), "Failed to create viewport")));}
 
-		Result<void> viewsCreation = CreateViews(windowConfig);
+		Result viewsCreation = CreateViews(windowConfig);
 		if (!viewsCreation) {return (std::unexpected(Error(viewsCreation.error(), "Failed to create viewport")));}
 
-		Result<void> semaphoresCreation = CreateSemaphores();
+		Result semaphoresCreation = CreateSemaphores();
 		if (!semaphoresCreation) {return (std::unexpected(Error(semaphoresCreation.error(), "Failed to create viewport")));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Viewport::CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig)
+	Result Viewport::CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig)
 	{
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
@@ -72,10 +72,10 @@ namespace Limcore
 
 		if (log) {std::cout << "Viewport swapchain created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Viewport::RetrieveImages()
+	Result Viewport::RetrieveImages()
 	{
 		assert(swapchain != nullptr);
 		assert(logicalDevice != nullptr);
@@ -90,10 +90,10 @@ namespace Limcore
 
 		if (log) {std::cout << "Viewport images retrieved" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Viewport::CreateViews(const WindowConfig& windowConfig)
+	Result Viewport::CreateViews(const WindowConfig& windowConfig)
 	{
 		assert(logicalDevice != nullptr);
 		assert(!images.empty());
@@ -121,10 +121,10 @@ namespace Limcore
 
 		if (log) {std::cout << "Viewport views created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Viewport::CreateSemaphores()
+	Result Viewport::CreateSemaphores()
 	{
 		assert(logicalDevice != nullptr);
 		assert(canPresentSemaphores.empty());
@@ -142,7 +142,7 @@ namespace Limcore
 
 		if (log) {std::cout << "Viewport semaphores created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
 	void Viewport::Destroy() noexcept

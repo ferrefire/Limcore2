@@ -67,9 +67,9 @@ namespace Limcore
 			std::unordered_map<QueueType, VkQueue> queues;
 			bool log = false;
 
-			[[nodiscard]] Result<void> CreateLogical(DeviceFeatures features);
-			[[nodiscard]] Result<void> SelectQueues(const VkSurfaceKHR& surface); //Todo: add manual selection and better auto selection.
-			[[nodiscard]] Result<void> RetrieveQueues();
+			[[nodiscard]] Result CreateLogical(DeviceFeatures features);
+			[[nodiscard]] Result SelectQueues(const VkSurfaceKHR& surface); //Todo: add manual selection and better auto selection.
+			[[nodiscard]] Result RetrieveQueues();
 
 		public:
 			Device() noexcept = default;
@@ -80,8 +80,8 @@ namespace Limcore
 
 			//Todo: implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log = false) noexcept;
-			[[nodiscard]] Result<void> Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const Window& window, DeviceFeatures features, bool log = false) noexcept
+			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log = false) noexcept;
+			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const Window& window, DeviceFeatures features, bool log = false) noexcept
 				{return (Create(instance, physicalDevice, window.GetSurface(), features, log));}
 
 			void Destroy() noexcept;
@@ -94,7 +94,7 @@ namespace Limcore
 	};
 
 	[[nodiscard]] std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance);
-	[[nodiscard]] Result<DeviceInfo> GetDevice(const VkInstance& instance, DeviceType type, DeviceFeatures features);
+	[[nodiscard]] ResultT<DeviceInfo> GetDevice(const VkInstance& instance, DeviceType type, DeviceFeatures features);
 
 	std::ostream& operator<<(std::ostream& out, const DeviceInfo& deviceInfo);
 }

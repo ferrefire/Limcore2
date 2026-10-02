@@ -37,10 +37,10 @@ namespace Limcore
 			WindowConfig config{};
 			
 
-			[[nodiscard]] Result<void> CreateFrame();
-			[[nodiscard]] Result<void> CreateSurface(const VkPhysicalDevice& physicalDevice);
-			[[nodiscard]] Result<void> SelectPresentMode(const VkPhysicalDevice& physicalDevice);
-			[[nodiscard]] Result<void> SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result CreateFrame();
+			[[nodiscard]] Result CreateSurface(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result SelectPresentMode(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice);
 
 		public:
 			Window() noexcept = default;
@@ -51,7 +51,7 @@ namespace Limcore
 
 			//Todo: implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
+			[[nodiscard]] Result Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
 
 			void Destroy() noexcept;
 

@@ -6,7 +6,7 @@
 
 namespace Limcore
 {
-	Result<void> Window::Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig)
+	Result Window::Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig)
 	{
 		assert(vulkanInstance != nullptr);
 		assert(physicalDevice != nullptr);
@@ -14,21 +14,21 @@ namespace Limcore
 		instance = vulkanInstance;
 		config = windowConfig;
 
-		Result<void> frameCreation = CreateFrame();
+		Result frameCreation = CreateFrame();
 		if (!frameCreation) {return (std::unexpected(Error(frameCreation.error(), "Failed to create window")));}
 
-		Result<void> surfaceCreation = CreateSurface(physicalDevice);
+		Result surfaceCreation = CreateSurface(physicalDevice);
 		if (!surfaceCreation) {return (std::unexpected(Error(surfaceCreation.error(), "Failed to create window")));}
 
-		Result<void> presentModeSelection = SelectPresentMode(physicalDevice);
+		Result presentModeSelection = SelectPresentMode(physicalDevice);
 
-		Result<void> surfaceFormatSelection = SelectSurfaceFormat(physicalDevice);
+		Result surfaceFormatSelection = SelectSurfaceFormat(physicalDevice);
 		if (!surfaceFormatSelection) {return (std::unexpected(Error(surfaceFormatSelection.error(), "Failed to create window")));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Window::CreateFrame()
+	Result Window::CreateFrame()
 	{
 		assert(windowData == nullptr);
 
@@ -47,10 +47,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Window frame created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Window::CreateSurface(const VkPhysicalDevice& physicalDevice)
+	Result Window::CreateSurface(const VkPhysicalDevice& physicalDevice)
 	{
 		assert(windowData != nullptr);
 		assert(surface == nullptr);
@@ -60,10 +60,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Window surface created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Window::SelectPresentMode(const VkPhysicalDevice& physicalDevice)
+	Result Window::SelectPresentMode(const VkPhysicalDevice& physicalDevice)
 	{
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
@@ -104,10 +104,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Window present mode selected" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Window::SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice)
+	Result Window::SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice)
 	{
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
@@ -153,7 +153,7 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Window surface format selected" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
 	void Window::Destroy() noexcept

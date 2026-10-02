@@ -42,7 +42,7 @@ namespace Limcore
 		return (true);
 	}
 
-	Result<VkInstance> CreateInstance()
+	ResultT<VkInstance> CreateInstance()
 	{
 		if (!glfwInit())
 		{

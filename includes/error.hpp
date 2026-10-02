@@ -22,5 +22,6 @@ namespace Limcore
 		void Print() noexcept;
 	};
 
-	template<typename T> using Result = std::expected<T, Error>;
+	template<typename T> using ResultT = std::expected<T, Error>;
+	typedef ResultT<void> Result;
 }

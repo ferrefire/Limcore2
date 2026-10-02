@@ -22,10 +22,10 @@ namespace Limcore
 
 			bool log = false;
 
-			[[nodiscard]] Result<void> CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig);
-			[[nodiscard]] Result<void> RetrieveImages();
-			[[nodiscard]] Result<void> CreateViews(const WindowConfig& windowConfig);
-			[[nodiscard]] Result<void> CreateSemaphores();
+			[[nodiscard]] Result CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig);
+			[[nodiscard]] Result RetrieveImages();
+			[[nodiscard]] Result CreateViews(const WindowConfig& windowConfig);
+			[[nodiscard]] Result CreateSemaphores();
 
 		public:
 			Viewport() noexcept = default;
@@ -36,8 +36,8 @@ namespace Limcore
 
 			//Todo: implement move operators.
 
-			[[nodiscard]] Result<void> Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log = false);
-			[[nodiscard]] Result<void> Create(const Device& device, const Window& window, bool log = false)
+			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log = false);
+			[[nodiscard]] Result Create(const Device& device, const Window& window, bool log = false)
 				{return (Create(device.GetLogicalDevice(), device.GetPhysicalDevice(), window.GetSurface(), window.GetConfig(), log));}
 			
 			void Destroy() noexcept;

@@ -27,5 +27,5 @@ namespace Limcore
 	};
 
 	[[nodiscard]] bool HasValidationLayers(const std::vector<const char*>& layers);
-	[[nodiscard]] Result<VkInstance> CreateInstance(); //Add a config struct as parameter.
+	[[nodiscard]] ResultT<VkInstance> CreateInstance(); //Todo: Add a config struct as parameter.
 }

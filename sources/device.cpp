@@ -8,7 +8,7 @@
 
 namespace Limcore
 {
-	Result<void> Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log) noexcept
+	Result Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log) noexcept
 	{
 		assert(instance != nullptr);
 		assert(physicalDevice != nullptr);
@@ -19,19 +19,19 @@ namespace Limcore
 		this->log = log;
 		this->physicalDevice = physicalDevice;
 
-		Result<void> queueSelection = SelectQueues(surface);
+		Result queueSelection = SelectQueues(surface);
 		if (!queueSelection) {return (std::unexpected(Error(queueSelection.error(), "Failed to create device")));}
 
-		Result<void> logicalDeviceCreation = CreateLogical(features);
+		Result logicalDeviceCreation = CreateLogical(features);
 		if (!logicalDeviceCreation) {return (std::unexpected(Error(logicalDeviceCreation.error(), "Failed to create device")));}
 
-		Result<void> queueRetrieval = RetrieveQueues();
+		Result queueRetrieval = RetrieveQueues();
 		if (!queueRetrieval) {return (std::unexpected(Error(queueRetrieval.error(), "Failed to create device")));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Device::CreateLogical(DeviceFeatures features)
+	Result Device::CreateLogical(DeviceFeatures features)
 	{
 		assert(physicalDevice != nullptr);
 		assert(logicalDevice == nullptr);
@@ -92,10 +92,10 @@ namespace Limcore
 
 		if (log) {std::cout << "Logical device created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Device::SelectQueues(const VkSurfaceKHR& surface)
+	Result Device::SelectQueues(const VkSurfaceKHR& surface)
 	{
 		assert(physicalDevice != nullptr);
 		assert(surface != nullptr);
@@ -137,10 +137,10 @@ namespace Limcore
 		selectedQueueFamilyIndex = queueFamilyIndex;
 		if (log) {std::cout << "Queue family selected: " << selectedQueueFamilyIndex << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Device::RetrieveQueues()
+	Result Device::RetrieveQueues()
 	{
 		assert(logicalDevice != nullptr);
 		assert(selectedQueueFamilyIndex != NO_QUEUE_FAMILY);
@@ -161,7 +161,7 @@ namespace Limcore
 		if (queues[QueueType::Compute] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve compute queue")));}
 		if (queues[QueueType::Present] == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to retrieve present queue")));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
 	void Device::Destroy() noexcept
@@ -220,7 +220,7 @@ namespace Limcore
 		return (availableDevices);
 	}
 
-	Result<DeviceInfo> GetDevice(const VkInstance& instance, DeviceType type, DeviceFeatures features)
+	ResultT<DeviceInfo> GetDevice(const VkInstance& instance, DeviceType type, DeviceFeatures features)
 	{
 		assert(instance != nullptr);
 

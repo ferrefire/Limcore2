@@ -4,7 +4,7 @@
 
 namespace Limcore
 {
-	Result<void> Renderer::Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig)
+	Result Renderer::Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig)
 	{
 		assert(logicalDevice != nullptr);
 		assert(rendererConfig.maxFramesInFlight >= 1 && rendererConfig.maxFramesInFlight <= 3);
@@ -12,22 +12,22 @@ namespace Limcore
 		this->logicalDevice = logicalDevice;
 		config = rendererConfig;
 
-		Result<void> fencesCreation = CreateFences();
+		Result fencesCreation = CreateFences();
 		if (!fencesCreation) {return (std::unexpected(Error(fencesCreation.error(), "Failed to create renderer")));}
 
-		Result<void> semaphoresCreation = CreateSemaphores();
+		Result semaphoresCreation = CreateSemaphores();
 		if (!semaphoresCreation) {return (std::unexpected(Error(semaphoresCreation.error(), "Failed to create renderer")));}
 
-		Result<void> commandPoolsCreation = CreateCommandPools(queueFamilyIndex);
+		Result commandPoolsCreation = CreateCommandPools(queueFamilyIndex);
 		if (!commandPoolsCreation) {return (std::unexpected(Error(commandPoolsCreation.error(), "Failed to create renderer")));}
 
-		Result<void> commandBuffersAllocation = AllocateCommandBuffers();
+		Result commandBuffersAllocation = AllocateCommandBuffers();
 		if (!commandBuffersAllocation) {return (std::unexpected(Error(commandBuffersAllocation.error(), "Failed to create renderer")));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Renderer::CreateFences()
+	Result Renderer::CreateFences()
 	{
 		assert(frameFences.empty());
 
@@ -45,10 +45,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Renderer fences created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Renderer::CreateSemaphores()
+	Result Renderer::CreateSemaphores()
 	{
 		assert(canRenderSemaphores.empty());
 
@@ -65,10 +65,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Renderer semaphores created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Renderer::CreateCommandPools(const uint32_t& queueFamilyIndex)
+	Result Renderer::CreateCommandPools(const uint32_t& queueFamilyIndex)
 	{
 		assert(commandPools.empty());
 
@@ -88,10 +88,10 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Renderer command pools created" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Renderer::AllocateCommandBuffers()
+	Result Renderer::AllocateCommandBuffers()
 	{
 		assert(commandBuffers.empty());
 		assert(commandPools.size() == config.maxFramesInFlight);
@@ -113,7 +113,7 @@ namespace Limcore
 
 		if (config.log) {std::cout << "Renderer command buffers allocated" << std::endl;}
 
-		return (Result<void>());
+		return (Result());
 	}
 
 	void Renderer::Destroy() noexcept
@@ -148,7 +148,7 @@ namespace Limcore
 		logicalDevice = nullptr;
 	}
 
-	Result<void> Renderer::WaitForFrame()
+	Result Renderer::WaitForFrame()
 	{
 		assert(logicalDevice != nullptr);
 		assert(!frameFences.empty());
@@ -159,10 +159,15 @@ namespace Limcore
 		result = vkResetFences(logicalDevice, 1, &frameFences[frameIndex]);
 		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to reset fence", result}));}
 
-		return (Result<void>());
+		return (Result());
 	}
 
-	Result<void> Renderer::RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start)
+	/*Result Renderer::BeginFrame()
+	{
+
+	}*/
+
+	Result Renderer::RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start)
 	{
 		assert(logicalDevice != nullptr);
 		assert(swapchain != nullptr);
@@ -196,7 +201,7 @@ namespace Limcore
 		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.clearValue = {{float(frameIndex), 0.0f, 0.0f, 1.0f}};
+		colorAttachment.clearValue = {{1.0f, 1.0f, 1.0f, 1.0f}};
 
 		VkRenderingInfo renderInfo{};
 		renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -257,7 +262,7 @@ namespace Limcore
 
 		frameIndex = (frameIndex + 1) % config.maxFramesInFlight;
 
-		return (Result<void>());
+		return (Result());
 	}
 
 	void Renderer::TransitionToColor(const VkImage& image, bool undefined)
