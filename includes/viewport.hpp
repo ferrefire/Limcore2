@@ -45,11 +45,16 @@ namespace Limcore
 			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkSwapchainKHR& GetSwapchain() const noexcept {return (swapchain);}
 			[[nodiscard]] const VkExtent2D& GetExtent() const noexcept {return (extent);}
+			[[nodiscard]] const VkImage& GetImage(uint32_t index) const {return (images[index]);}
 			[[nodiscard]] const std::vector<VkImage>& GetImages() const noexcept {return (images);}
+			[[nodiscard]] const VkImageView& GetView(uint32_t index) const {return (views[index]);}
 			[[nodiscard]] const std::vector<VkImageView>& GetViews() const noexcept {return (views);}
+			[[nodiscard]] const VkSemaphore& GetSemaphore(uint32_t index) const {return (canPresentSemaphores[index]);}
 			[[nodiscard]] const std::vector<VkSemaphore>& GetSemaphores() const noexcept {return (canPresentSemaphores);}
 
-			//void TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer);
-			//void TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer);
+			void TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer);
+			//void TransitionImageToColor(const Renderer& renderer) {TransitionImageToColor(renderer.GetPresentIndex(), renderer.GetCommandBuffer());}
+			void TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer);
+			//void TransitionImageToPresent(const Renderer& renderer) {TransitionImageToPresent(renderer.GetPresentIndex(), renderer.GetCommandBuffer());}
 	};
 }

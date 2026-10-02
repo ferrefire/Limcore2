@@ -3,6 +3,7 @@
 #include "window.hpp"
 #include "viewport.hpp"
 #include "renderer.hpp"
+#include "command.hpp"
 
 #include <iostream>
 
@@ -48,10 +49,40 @@ int main()
 	{
 		glfwPollEvents();
 		if (window.ShouldClose()) {break;}
-		auto frameWait = renderer.WaitForFrame();
-		if (!frameWait) {frameWait.error().Print();}
-		auto frameRecord = renderer.RecordCommands(viewport, device);
-		if (!frameRecord) {frameRecord.error().Print();}
+
+		Limcore::Result result = renderer.WaitForFrame();
+		if (!result) {result.error().Print(); break;}
+
+		result = renderer.BeginFrame(viewport);
+		if (!result) {result.error().Print(); break;}
+
+		viewport.TransitionImageToColor(renderer.GetPresentIndex(), renderer.GetCommandBuffer());
+
+		VkRenderingAttachmentInfo colorAttachment{};
+		colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		colorAttachment.imageView = viewport.GetView(renderer.GetPresentIndex());
+		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.clearValue = {{1.0f, 1.0f, 1.0f, 1.0f}};
+
+		VkRenderingInfo renderInfo{};
+		renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderInfo.renderArea = {{0, 0}, viewport.GetExtent()};
+		renderInfo.layerCount = 1;
+		renderInfo.colorAttachmentCount = 1;
+		renderInfo.pColorAttachments = &colorAttachment;
+
+		vkCmdBeginRendering(renderer.GetCommandBuffer(), &renderInfo);
+		vkCmdEndRendering(renderer.GetCommandBuffer());
+
+		viewport.TransitionImageToPresent(renderer.GetPresentIndex(), renderer.GetCommandBuffer());
+
+		result = renderer.EndFrame(device, viewport);
+		if (!result) {result.error().Print(); break;}
+
+		result = renderer.PresentFrame(device, viewport);
+		if (!result) {result.error().Print(); break;}
 	}
 
 	renderer.Destroy();

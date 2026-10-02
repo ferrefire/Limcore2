@@ -239,7 +239,7 @@ namespace Limcore
 		return (true);
 	}
 
-	/*void Viewport::TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer)
+	void Viewport::TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer)
 	{
 		assert(index < images.size());
 		assert(commandBuffer != nullptr);
@@ -289,5 +289,5 @@ namespace Limcore
 		dependency.pImageMemoryBarriers = &barrier;
 
 		vkCmdPipelineBarrier2(commandBuffer, &dependency);
-	}*/
+	}
 }

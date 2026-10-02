@@ -1,5 +1,7 @@
 #include "renderer.hpp"
 
+#include "printer.hpp"
+
 #include <cassert>
 #include <string>
 
@@ -91,34 +93,35 @@ namespace Limcore
 	{
 		assert(logicalDevice != nullptr);
 		assert(!frameFences.empty());
-		//assert(state == RendererState::Submitted);
 
-		VkResult result = vkWaitForFences(logicalDevice, 1, &frameFences[frameIndex], true, FRAME_FENCE_TIMEOUT);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to wait for fence", result}));}
+		if (state != RendererState::Presented)
+			{return (std::unexpected(Error(ErrorCode::Unknown, std::string("Renderer state is not Presented: ").append(EnumName(state)))));}
 
-		result = vkResetFences(logicalDevice, 1, &frameFences[frameIndex]);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to reset fence", result}));}
+		Result result = WaitForFence(frameFences[frameIndex], logicalDevice, FRAME_FENCE_TIMEOUT);
+		RETURN_ERROR(result, "Failed to wait for frame")
 
 		state = RendererState::Waited;
 
 		return (Result());
 	}
 
-	Result Renderer::BeginFrame(const VkSwapchainKHR& swapchain, const std::vector<VkSemaphore>& canPresentSemaphores)
+	Result Renderer::BeginFrame(const VkSwapchainKHR& swapchain)
 	{
 		assert(logicalDevice != nullptr);
 		assert(swapchain != nullptr);
-		assert(!canPresentSemaphores.empty());
-		assert(state == RendererState::Waited);
 
-		uint32_t presentImageIndex;
-		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentImageIndex);
+		if (state != RendererState::Waited)
+			{return (std::unexpected(Error(ErrorCode::Unknown, std::string("Renderer state is not Waited: ").append(EnumName(state)))));}
+
+		presentIndex = NO_PRESENT_IMAGE;
+		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentIndex);
 		RETURN_VK_ERROR(result, "Failed to acquire next image")
+		if (presentIndex == NO_PRESENT_IMAGE) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to acquire next image")));}
 
 		result = vkResetCommandPool(logicalDevice, commandPools[frameIndex], 0);
 		RETURN_VK_ERROR(result, "Failed to reset command pool")
 
-		auto beginning = BeginCommand(commandBuffers[frameIndex]);
+		Result beginning = BeginCommand(commandBuffers[frameIndex]);
 		if (!beginning) {return (beginning);}
 
 		state = RendererState::Began;
@@ -126,7 +129,99 @@ namespace Limcore
 		return (Result());
 	}
 
-	Result Renderer::RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue)
+	/*Result Renderer::BeginRendering(const uint32_t& presentImageIndex, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent)
+	{
+		assert(presentImageIndex < swapchainImages.size());
+		assert(!swapchainImages.empty());
+		assert(!swapchainViews.empty());
+
+		TransitionToColor(swapchainImages[presentImageIndex]);
+
+		VkRenderingAttachmentInfo colorAttachment{};
+		colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		colorAttachment.imageView = swapchainViews[presentImageIndex];
+		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colorAttachment.clearValue = {{1.0f, 1.0f, 1.0f, 1.0f}};
+
+		VkRenderingInfo renderInfo{};
+		renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderInfo.renderArea = {{0, 0}, swapchainExtent};
+		renderInfo.layerCount = 1;
+		renderInfo.colorAttachmentCount = 1;
+		renderInfo.pColorAttachments = &colorAttachment;
+
+		vkCmdBeginRendering(commandBuffers[frameIndex], &renderInfo);
+
+		return (Result());
+	}*/
+
+	Result Renderer::EndFrame(const VkQueue& submitQueue, const std::vector<VkSemaphore>& canPresentSemaphores, std::vector<VkSemaphoreSubmitInfo> waitInfos, std::vector<VkSemaphoreSubmitInfo> signalInfos)
+	{
+		assert(submitQueue != nullptr);
+		assert(presentIndex < canPresentSemaphores.size());
+
+		if (state != RendererState::Began)
+			{return (std::unexpected(Error(ErrorCode::Unknown, std::string("Renderer state is not Began: ").append(EnumName(state)))));}
+
+		Result result = EndCommand(commandBuffers[frameIndex]);
+		RETURN_ERROR(result, "Failed to end frame")
+
+		state = RendererState::Ended;
+
+		VkSemaphoreSubmitInfo waitInfo{};
+		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		waitInfo.semaphore = canRenderSemaphores[frameIndex];
+		waitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		waitInfo.pNext = nullptr;
+
+		VkSemaphoreSubmitInfo signalInfo{};
+		signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signalInfo.semaphore = canPresentSemaphores[presentIndex];
+		signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		signalInfo.pNext = nullptr;
+
+		waitInfos.push_back(waitInfo);
+		signalInfos.push_back(signalInfo);
+
+		result = SubmitCommand(commandBuffers[frameIndex], submitQueue, waitInfos, signalInfos, frameFences[frameIndex]);
+		RETURN_ERROR(result, "Failed to end frame")
+
+		state = RendererState::Submitted;
+
+		return (Result());
+	}
+
+	Result Renderer::PresentFrame(const VkSwapchainKHR& swapchain, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& presentQueue)
+	{
+		assert(swapchain != nullptr);
+		assert(presentIndex < canPresentSemaphores.size());
+		assert(presentQueue != nullptr);
+
+		if (state != RendererState::Submitted)
+			{return (std::unexpected(Error(ErrorCode::Unknown, std::string("Renderer state is not Submitted: ").append(EnumName(state)))));}
+
+		VkPresentInfoKHR presentInfo{};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &swapchain;
+		presentInfo.pImageIndices = &presentIndex;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &canPresentSemaphores[presentIndex];
+		presentInfo.pNext = nullptr;
+
+		VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+		RETURN_VK_ERROR(result, "Failed to present to queue")
+
+		frameIndex = (frameIndex + 1) % config.maxFramesInFlight;
+
+		state = RendererState::Presented;
+
+		return (Result());
+	}
+
+	/*Result Renderer::RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue)
 	{
 		assert(logicalDevice != nullptr);
 		assert(swapchain != nullptr);
@@ -143,14 +238,7 @@ namespace Limcore
 		result = vkResetCommandPool(logicalDevice, commandPools[frameIndex], 0);
 		RETURN_VK_ERROR(result, "Failed to reset command pool")
 
-		VkCommandBufferBeginInfo commandBeginInfo{};
-		commandBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		commandBeginInfo.pInheritanceInfo = nullptr;
-		commandBeginInfo.pNext = nullptr;
-
-		result = vkBeginCommandBuffer(commandBuffers[frameIndex], &commandBeginInfo);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to begin command buffer", result}));}
+		BeginCommand(commandBuffers[frameIndex]);
 
 		TransitionToColor(swapchainImages[presentImageIndex]);
 
@@ -174,13 +262,7 @@ namespace Limcore
 
 		TransitionToPresent(swapchainImages[presentImageIndex]);
 
-		result = vkEndCommandBuffer(commandBuffers[frameIndex]);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to end command buffer", result}));}
-
-		VkCommandBufferSubmitInfo commandSubmitInfo{};
-		commandSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-		commandSubmitInfo.commandBuffer = commandBuffers[frameIndex];
-		commandSubmitInfo.pNext = nullptr;
+		EndCommand(commandBuffers[frameIndex]);
 
 		VkSemaphoreSubmitInfo waitInfo{};
 		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -194,18 +276,7 @@ namespace Limcore
 		signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		signalInfo.pNext = nullptr;
 
-		VkSubmitInfo2 submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-		submitInfo.commandBufferInfoCount = 1;
-		submitInfo.pCommandBufferInfos = &commandSubmitInfo;
-		submitInfo.waitSemaphoreInfoCount = 1;
-		submitInfo.pWaitSemaphoreInfos = &waitInfo;
-		submitInfo.signalSemaphoreInfoCount = 1;
-		submitInfo.pSignalSemaphoreInfos = &signalInfo;
-		submitInfo.pNext = nullptr;
-
-		result = vkQueueSubmit2(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to submit to queue", result}));}
+		SubmitCommand(commandBuffers[frameIndex], graphicsQueue, {waitInfo}, {signalInfo}, frameFences[frameIndex]);
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -222,9 +293,9 @@ namespace Limcore
 		frameIndex = (frameIndex + 1) % config.maxFramesInFlight;
 
 		return (Result());
-	}
+	}*/
 
-	void Renderer::TransitionToColor(const VkImage& image)
+	/*void Renderer::TransitionToColor(const VkImage& image)
 	{
 		VkImageMemoryBarrier2 barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -268,5 +339,5 @@ namespace Limcore
 		dependency.pImageMemoryBarriers = &barrier;
 
 		vkCmdPipelineBarrier2(commandBuffers[frameIndex], &dependency);
-	}
+	}*/
 }

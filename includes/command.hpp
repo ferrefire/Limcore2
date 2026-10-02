@@ -66,9 +66,9 @@ namespace Limcore
 	[[nodiscard]] Result AllocateCommandBuffer(VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool, const VkDevice& logicalDevice);
 	[[nodiscard]] Result AllocateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers, const VkCommandPool& commandPool, const VkDevice& logicalDevice, uint32_t count);
 
-	[[nodiscard]] Result BeginCommand(const VkCommandBuffer& commandBuffer, VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	[[nodiscard]] Result EndCommand(const VkCommandBuffer& commandBuffer);
-	[[nodiscard]] Result SubmitCommand(const VkCommandBuffer& commandBuffer, const VkQueue& queue, std::vector<VkSemaphoreSubmitInfo> waitInfos, std::vector<VkSemaphoreSubmitInfo> signalInfos, VkFence fence);
+	Result BeginCommand(const VkCommandBuffer& commandBuffer, VkCommandBufferUsageFlags usage = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	Result EndCommand(const VkCommandBuffer& commandBuffer);
+	Result SubmitCommand(const VkCommandBuffer& commandBuffer, const VkQueue& queue, std::vector<VkSemaphoreSubmitInfo> waitInfos, std::vector<VkSemaphoreSubmitInfo> signalInfos, VkFence fence);
 
-	[[nodiscard]] Result WaitForFence(const VkFence& fence, const VkDevice& logicalDevice, uint64_t timeout = DEFAULT_FENCE_TIMEOUT);
+	Result WaitForFence(const VkFence& fence, const VkDevice& logicalDevice, uint64_t timeout = DEFAULT_FENCE_TIMEOUT);
 }
