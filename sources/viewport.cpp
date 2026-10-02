@@ -1,31 +1,42 @@
 #include "viewport.hpp"
 
+#include "command.hpp"
+#include "utility.hpp"
+
 #include <cassert>
 #include <algorithm>
 #include <iostream>
+#include <string>
 
 namespace Limcore
 {
-	Result Viewport::Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log)
+	Result Viewport::Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log)
 	{
 		assert(logicalDevice != nullptr);
 		assert(physicalDevice != nullptr);
+		assert(queueFamilyIndex != NO_QUEUE_FAMILY);
+		assert(graphicsQueue != nullptr);
 		assert(surface != nullptr);
+
+		const std::string message = "Failed to create viewport";
 
 		this->log = log;
 		this->logicalDevice = logicalDevice;
 
-		Result swapchainCreation = CreateSwapchain(physicalDevice, surface, windowConfig);
-		if (!swapchainCreation) {return (std::unexpected(Error(swapchainCreation.error(), "Failed to create viewport")));}
+		Result result = CreateSwapchain(physicalDevice, surface, windowConfig);
+		RETURN_ERROR(result, message)
 
-		Result imagesRetrieval = RetrieveImages();
-		if (!imagesRetrieval) {return (std::unexpected(Error(imagesRetrieval.error(), "Failed to create viewport")));}
+		result = RetrieveImages();
+		RETURN_ERROR(result, message)
 
-		Result viewsCreation = CreateViews(windowConfig);
-		if (!viewsCreation) {return (std::unexpected(Error(viewsCreation.error(), "Failed to create viewport")));}
+		result = CreateViews(windowConfig);
+		RETURN_ERROR(result, message)
 
-		Result semaphoresCreation = CreateSemaphores();
-		if (!semaphoresCreation) {return (std::unexpected(Error(semaphoresCreation.error(), "Failed to create viewport")));}
+		result = CreateSemaphores(canPresentSemaphores, logicalDevice, images.size());
+		RETURN_ERROR(result, message)
+
+		result = TransitionLayouts(queueFamilyIndex, graphicsQueue);
+		RETURN_ERROR(result, message)
 
 		return (Result());
 	}
@@ -68,7 +79,7 @@ namespace Limcore
 		createInfo.oldSwapchain = nullptr;
 
 		VkResult result = vkCreateSwapchainKHR(logicalDevice, &createInfo, nullptr, &swapchain);
-		if (result != VK_SUCCESS || swapchain == nullptr) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create swapchain", result}));}
+		RETURN_VK_ERROR(result, "Failed to create swapchain")
 
 		if (log) {std::cout << "Viewport swapchain created" << std::endl;}
 
@@ -82,11 +93,10 @@ namespace Limcore
 		assert(images.empty());
 
 		uint32_t imageCount = 0;
-		VkResult result = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, nullptr);
-		if (result != VK_SUCCESS || imageCount == 0) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to retrieve images", result}));}
+		vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, nullptr);
 		images.resize(imageCount);
-		result = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, images.data());
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to retrieve images", result}));}
+		VkResult result = vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, images.data());
+		RETURN_VK_ERROR(result, "Failed to retrieve images")
 
 		if (log) {std::cout << "Viewport images retrieved" << std::endl;}
 
@@ -116,7 +126,7 @@ namespace Limcore
 			createInfo.image = images[i];
 
 			VkResult result = vkCreateImageView(logicalDevice, &createInfo, nullptr, &views[i]);
-			if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create views", result}));}
+			RETURN_VK_ERROR(result, "Failed to create views")
 		}
 
 		if (log) {std::cout << "Viewport views created" << std::endl;}
@@ -124,23 +134,65 @@ namespace Limcore
 		return (Result());
 	}
 
-	Result Viewport::CreateSemaphores()
+	Result Viewport::TransitionLayouts(const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue)
 	{
-		assert(logicalDevice != nullptr);
-		assert(canPresentSemaphores.empty());
+		const std::string message = "Failed to transition layouts";
 
-		canPresentSemaphores.resize(images.size());
+		VkCommandPool commandPool = nullptr;
+		VkCommandBuffer commandBuffer = nullptr;
+		VkFence fence = nullptr;
 
-		VkSemaphoreCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		Result result = CreateCommandPool(commandPool, logicalDevice, queueFamilyIndex);
+		RETURN_ERROR(result, message)
 
-		for (size_t i = 0; i < canPresentSemaphores.size(); i++)
+		result = AllocateCommandBuffer(commandBuffer, commandPool, logicalDevice);
+		RETURN_ERROR(result, message)
+
+		result = CreateFence(fence, logicalDevice, 0);
+		RETURN_ERROR(result, message)
+
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+		barrier.srcAccessMask = 0;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+		barrier.dstAccessMask = 0;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+		std::vector<VkImageMemoryBarrier2> barriers(images.size());
+
+		for (size_t i = 0; i < barriers.size(); i++)
 		{
-			VkResult result = vkCreateSemaphore(logicalDevice, &createInfo, nullptr, &canPresentSemaphores[i]);
-			if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create semaphores", result}));}
+			barriers[i] = barrier;
+			barriers[i].image = images[i];
 		}
 
-		if (log) {std::cout << "Viewport semaphores created" << std::endl;}
+		VkDependencyInfo dependency{};
+		dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependency.imageMemoryBarrierCount = CUI(barriers.size());
+		dependency.pImageMemoryBarriers = barriers.data();
+
+		result = BeginCommand(commandBuffer);
+		RETURN_ERROR(result, message)
+
+		vkCmdPipelineBarrier2(commandBuffer, &dependency);
+
+		result = EndCommand(commandBuffer);
+		RETURN_ERROR(result, message)
+
+		result = SubmitCommand(commandBuffer, graphicsQueue, {}, {}, fence);
+		RETURN_ERROR(result, message)
+
+		result = WaitForFence(fence, logicalDevice);
+		RETURN_ERROR(result, message)
+
+		vkDeviceWaitIdle(logicalDevice);
+		vkDestroyFence(logicalDevice, fence, nullptr);
+		vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
 
 		return (Result());
 	}
@@ -186,4 +238,56 @@ namespace Limcore
 
 		return (true);
 	}
+
+	/*void Viewport::TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer)
+	{
+		assert(index < images.size());
+		assert(commandBuffer != nullptr);
+
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+		barrier.srcAccessMask = 0;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = images[index];
+		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+		VkDependencyInfo dependency{};
+		dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependency.imageMemoryBarrierCount = 1;
+		dependency.pImageMemoryBarriers = &barrier;
+
+		vkCmdPipelineBarrier2(commandBuffer, &dependency);
+	}
+
+	void Viewport::TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer)
+	{
+		assert(index < images.size());
+		assert(commandBuffer != nullptr);
+
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+		barrier.dstAccessMask = 0;
+		barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = images[index];
+		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+		VkDependencyInfo dependency{};
+		dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependency.imageMemoryBarrierCount = 1;
+		dependency.pImageMemoryBarriers = &barrier;
+
+		vkCmdPipelineBarrier2(commandBuffer, &dependency);
+	}*/
 }

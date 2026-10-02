@@ -3,6 +3,7 @@
 #include "printer.hpp"
 
 #include <cassert>
+#include <string>
 
 namespace Limcore
 {
@@ -11,19 +12,22 @@ namespace Limcore
 		assert(vulkanInstance != nullptr);
 		assert(physicalDevice != nullptr);
 
+		const std::string message = "Failed to create window";
+
 		instance = vulkanInstance;
 		config = windowConfig;
 
-		Result frameCreation = CreateFrame();
-		if (!frameCreation) {return (std::unexpected(Error(frameCreation.error(), "Failed to create window")));}
+		Result result = CreateFrame();
+		RETURN_ERROR(result, message)
 
-		Result surfaceCreation = CreateSurface(physicalDevice);
-		if (!surfaceCreation) {return (std::unexpected(Error(surfaceCreation.error(), "Failed to create window")));}
+		result = CreateSurface(physicalDevice);
+		RETURN_ERROR(result, message)
 
-		Result presentModeSelection = SelectPresentMode(physicalDevice);
+		result = SelectPresentMode(physicalDevice);
+		RETURN_ERROR(result, message)
 
-		Result surfaceFormatSelection = SelectSurfaceFormat(physicalDevice);
-		if (!surfaceFormatSelection) {return (std::unexpected(Error(surfaceFormatSelection.error(), "Failed to create window")));}
+		result = SelectSurfaceFormat(physicalDevice);
+		RETURN_ERROR(result, message)
 
 		return (Result());
 	}
@@ -56,7 +60,7 @@ namespace Limcore
 		assert(surface == nullptr);
 
 		VkResult result = glfwCreateWindowSurface(instance, windowData, nullptr, &surface);
-		if (result != VK_SUCCESS || surface == nullptr) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to create surface", result}));}
+		RETURN_VK_ERROR(result, "Failed to create surface")
 
 		if (config.log) {std::cout << "Window surface created" << std::endl;}
 

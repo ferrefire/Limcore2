@@ -8,6 +8,9 @@
 
 namespace Limcore
 {
+	#define RETURN_ERROR(a, b) if (!a) {return (std::unexpected(Error(a.error(), b)));}
+	#define RETURN_VK_ERROR(a, b) if (a != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, b, a}));}
+
 	enum class ErrorCode {Unknown, VulkanError, GlfwError};
 
 	struct Error

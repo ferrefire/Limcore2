@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <exception>
+#include <string>
 
 namespace Limcore
 {
@@ -16,17 +17,19 @@ namespace Limcore
 		assert(this->physicalDevice == nullptr);
 		assert(this->logicalDevice == nullptr);
 
+		const std::string message = "Failed to create device";
+
 		this->log = log;
 		this->physicalDevice = physicalDevice;
 
-		Result queueSelection = SelectQueues(surface);
-		if (!queueSelection) {return (std::unexpected(Error(queueSelection.error(), "Failed to create device")));}
+		Result result = SelectQueues(surface);
+		RETURN_ERROR(result, message)
 
-		Result logicalDeviceCreation = CreateLogical(features);
-		if (!logicalDeviceCreation) {return (std::unexpected(Error(logicalDeviceCreation.error(), "Failed to create device")));}
+		result = CreateLogical(features);
+		RETURN_ERROR(result, message)
 
-		Result queueRetrieval = RetrieveQueues();
-		if (!queueRetrieval) {return (std::unexpected(Error(queueRetrieval.error(), "Failed to create device")));}
+		result = RetrieveQueues();
+		RETURN_ERROR(result, message)
 
 		return (Result());
 	}
@@ -88,7 +91,7 @@ namespace Limcore
 		createInfo.pNext = &deviceFeatures;
 
 		VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice);
-		if (result != VK_SUCCESS || logicalDevice == nullptr) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to create logical device", result)));}
+		RETURN_VK_ERROR(result, "Failed to create logical device")
 
 		if (log) {std::cout << "Logical device created" << std::endl;}
 

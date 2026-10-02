@@ -25,7 +25,7 @@ namespace Limcore
 			[[nodiscard]] Result CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig);
 			[[nodiscard]] Result RetrieveImages();
 			[[nodiscard]] Result CreateViews(const WindowConfig& windowConfig);
-			[[nodiscard]] Result CreateSemaphores();
+			[[nodiscard]] Result TransitionLayouts(const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue);
 
 		public:
 			Viewport() noexcept = default;
@@ -36,9 +36,9 @@ namespace Limcore
 
 			//Todo: implement move operators.
 
-			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log = false);
+			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log = false);
 			[[nodiscard]] Result Create(const Device& device, const Window& window, bool log = false)
-				{return (Create(device.GetLogicalDevice(), device.GetPhysicalDevice(), window.GetSurface(), window.GetConfig(), log));}
+				{return (Create(device.GetLogicalDevice(), device.GetPhysicalDevice(), device.GetSelectedQueueFamily(), device.GetQueue(QueueType::Graphics), window.GetSurface(), window.GetConfig(), log));}
 			
 			void Destroy() noexcept;
 
@@ -48,5 +48,8 @@ namespace Limcore
 			[[nodiscard]] const std::vector<VkImage>& GetImages() const noexcept {return (images);}
 			[[nodiscard]] const std::vector<VkImageView>& GetViews() const noexcept {return (views);}
 			[[nodiscard]] const std::vector<VkSemaphore>& GetSemaphores() const noexcept {return (canPresentSemaphores);}
+
+			//void TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer);
+			//void TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer);
 	};
 }

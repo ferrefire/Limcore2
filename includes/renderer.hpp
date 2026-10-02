@@ -4,6 +4,7 @@
 #include "window.hpp"
 #include "viewport.hpp"
 #include "error.hpp"
+#include "command.hpp"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -14,6 +15,8 @@ namespace Limcore
 {
 	#define FRAME_FENCE_TIMEOUT 1000000000
 	#define ACQUIRE_IMAGE_TIMEOUT 1000000000
+
+	enum class RendererState {Waited, Began, Ended, Submitted};
 
 	struct RendererConfig
 	{
@@ -33,14 +36,12 @@ namespace Limcore
 			std::vector<VkCommandPool> commandPools;
 			std::vector<VkCommandBuffer> commandBuffers;
 
+			RendererState state = RendererState::Submitted;
 			uint32_t frameIndex = 0;
 
-			[[nodiscard]] Result CreateFences();
-			[[nodiscard]] Result CreateSemaphores();
-			[[nodiscard]] Result CreateCommandPools(const uint32_t& queueFamilyIndex);
 			[[nodiscard]] Result AllocateCommandBuffers();
 
-			void TransitionToColor(const VkImage& image, bool undefined = false); //Todo: make a dynamic version in the image class.
+			void TransitionToColor(const VkImage& image); //Todo: make a dynamic version in the image class.
 			void TransitionToPresent(const VkImage& image);
 
 		public:
@@ -59,13 +60,13 @@ namespace Limcore
 			void Destroy() noexcept;
 
 			Result WaitForFrame();
-			//Result BeginFrame();
-			//Result EndFrame();
+			Result BeginFrame(const VkSwapchainKHR& swapchain, const std::vector<VkSemaphore>& canPresentSemaphores);
+			Result EndFrame();
 
-			Result RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false);
-			Result RecordCommands(const Viewport& viewport, const VkQueue& graphicsQueue, const VkQueue& presentQueue, bool start = false)
-				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), graphicsQueue, presentQueue, start));}
-			Result RecordCommands(const Viewport& viewport, const Device& device, bool start = false)
-				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), device.GetQueue(QueueType::Graphics), device.GetQueue(QueueType::Present), start));}
+			Result RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue);
+			Result RecordCommands(const Viewport& viewport, const VkQueue& graphicsQueue, const VkQueue& presentQueue)
+				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), graphicsQueue, presentQueue));}
+			Result RecordCommands(const Viewport& viewport, const Device& device)
+				{return (RecordCommands(viewport.GetSwapchain(), viewport.GetImages(), viewport.GetViews(), viewport.GetExtent(), viewport.GetSemaphores(), device.GetQueue(QueueType::Graphics), device.GetQueue(QueueType::Present)));}
 	};
 }

@@ -43,15 +43,6 @@ int main()
 	Limcore::Renderer renderer;
 	auto rendererCreation = renderer.Create(device, rendererConfig);
 	if (!rendererCreation) {rendererCreation.error().Print();}
-
-	for (size_t i = 0; i < viewport.GetImages().size(); i++)
-	{
-		glfwPollEvents();
-		auto frameWait = renderer.WaitForFrame();
-		if (!frameWait) {frameWait.error().Print();}
-		auto frameRecord = renderer.RecordCommands(viewport, device, true);
-		if (!frameRecord) {frameRecord.error().Print();}
-	}
 	
 	while (true)
 	{
