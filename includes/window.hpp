@@ -22,8 +22,10 @@ namespace Limcore
 		WindowMode mode = WindowMode::Windowed;
 		VkPresentModeKHR presentMode = DEFAULT_PRESENT_MODE;
 		VkSurfaceFormatKHR surfaceFormat = DEFAULT_SURFACE_FORMAT;
-		uint32_t width = 0;
-		uint32_t height = 0;
+		uint32_t windowWidth = 0;
+		uint32_t windowHeight = 0;
+		uint32_t viewportWidth = 0;
+		uint32_t viewportHeight = 0;
 		bool log = false;
 	};
 	
@@ -60,6 +62,8 @@ namespace Limcore
 			[[nodiscard]] const WindowConfig& GetConfig() const noexcept {return (config);}
 
 			bool ShouldClose() const noexcept;
+
+			void Resized();
 	};
 
 	std::ostream& operator<<(std::ostream& out, const Window& window);

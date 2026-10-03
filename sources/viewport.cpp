@@ -41,6 +41,27 @@ namespace Limcore
 		return (Result());
 	}
 
+	Result Viewport::Recreate(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue, const VkSurfaceKHR& surface, const WindowConfig& windowConfig)
+	{
+		if (log) {std::cout << "Recreating viewport" << std::endl;}
+
+		oldSwapchain = swapchain;
+		swapchain = nullptr;
+
+		Destroy();
+
+		Result result = Create(logicalDevice, physicalDevice, queueFamilyIndex, graphicsQueue, surface, windowConfig, false);
+		RETURN_ERROR(result, "Failed to recreate swapchain")
+
+		if (oldSwapchain != nullptr)
+		{
+			vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
+			oldSwapchain = nullptr;
+		}
+
+		return (Result());
+	}
+
 	Result Viewport::CreateSwapchain(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const WindowConfig& windowConfig)
 	{
 		assert(physicalDevice != nullptr);
@@ -52,13 +73,17 @@ namespace Limcore
 		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
 		if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {imageCount = surfaceCapabilities.maxImageCount;}
 
-		VkExtent2D windowExtent = surfaceCapabilities.currentExtent;
-		if (windowExtent.width == UINT32_MAX || windowExtent.height == UINT32_MAX)
-		{
-			windowExtent.width = std::clamp(windowConfig.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-			windowExtent.height = std::clamp(windowConfig.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-		}
-		extent = windowExtent;
+		//VkExtent2D windowExtent = surfaceCapabilities.currentExtent;
+		//if (windowExtent.width == UINT32_MAX || windowExtent.height == UINT32_MAX)
+		//{
+		//	windowExtent.width = std::clamp(windowConfig.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+		//	windowExtent.height = std::clamp(windowConfig.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+		//}
+
+		VkExtent2D viewportExtent{};
+		viewportExtent.width = std::clamp(windowConfig.viewportWidth, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+		viewportExtent.height = std::clamp(windowConfig.viewportHeight, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+		extent = viewportExtent;
 
 		VkSwapchainCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -76,7 +101,7 @@ namespace Limcore
 		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		createInfo.presentMode = windowConfig.presentMode;
 		createInfo.clipped = VK_TRUE;
-		createInfo.oldSwapchain = nullptr;
+		createInfo.oldSwapchain = oldSwapchain;
 
 		VkResult result = vkCreateSwapchainKHR(logicalDevice, &createInfo, nullptr, &swapchain);
 		RETURN_VK_ERROR(result, "Failed to create swapchain")

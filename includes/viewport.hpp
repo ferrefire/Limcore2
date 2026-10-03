@@ -15,6 +15,7 @@ namespace Limcore
 			VkDevice logicalDevice = nullptr;
 
 			VkSwapchainKHR swapchain = nullptr;
+			VkSwapchainKHR oldSwapchain = nullptr;
 			VkExtent2D extent{};
 			std::vector<VkImage> images;
 			std::vector<VkImageView> views;
@@ -40,6 +41,10 @@ namespace Limcore
 			[[nodiscard]] Result Create(const Device& device, const Window& window, bool log = false)
 				{return (Create(device.GetLogicalDevice(), device.GetPhysicalDevice(), device.GetSelectedQueueFamily(), device.GetQueue(QueueType::Graphics), window.GetSurface(), window.GetConfig(), log));}
 			
+			[[nodiscard]] Result Recreate(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue, const VkSurfaceKHR& surface, const WindowConfig& windowConfig);
+			[[nodiscard]] Result Recreate(const Device& device, const Window& window)
+				{return (Recreate(device.GetLogicalDevice(), device.GetPhysicalDevice(), device.GetSelectedQueueFamily(), device.GetQueue(QueueType::Graphics), window.GetSurface(), window.GetConfig()));}
+
 			void Destroy() noexcept;
 
 			[[nodiscard]] bool IsValid() const noexcept;

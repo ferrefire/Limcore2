@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include "printer.hpp"
+#include "utility.hpp"
 
 #include <cassert>
 #include <string>
@@ -41,13 +42,19 @@ namespace Limcore
 		if (monitor == nullptr) {return (std::unexpected(Error{ErrorCode::GlfwError, "Failed to find a monitor"}));}
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
-		if (config.width > mode->width) {config.width = mode->width;}
-		if (config.height > mode->height) {config.height = mode->height;}
-		if (config.width == 0) {config.width = mode->width / (config.mode == WindowMode::Windowed ? 2 : 1);}
-		if (config.height == 0) {config.height = mode->height / (config.mode == WindowMode::Windowed ? 2 : 1);}
+		if (config.windowWidth > mode->width) {config.windowWidth = mode->width;}
+		if (config.windowHeight > mode->height) {config.windowHeight = mode->height;}
+		if (config.windowWidth == 0) {config.windowWidth = mode->width / (config.mode == WindowMode::Windowed ? 2 : 1);}
+		if (config.windowHeight == 0) {config.windowHeight = mode->height / (config.mode == WindowMode::Windowed ? 2 : 1);}
 
-		windowData = glfwCreateWindow(config.width, config.height, "Limcore", (config.mode == WindowMode::Fullscreen ? monitor : nullptr), nullptr);
+		windowData = glfwCreateWindow(config.windowWidth, config.windowHeight, "Limcore", (config.mode == WindowMode::Fullscreen ? monitor : nullptr), nullptr);
 		if (windowData == nullptr) {return (std::unexpected(Error{ErrorCode::GlfwError, "Failed to create window"}));}
+
+		int pixelWidth;
+		int pixelHeight;
+		glfwGetFramebufferSize(windowData, &pixelWidth, &pixelHeight);
+		config.viewportWidth = CUI(pixelWidth);
+		config.viewportHeight = CUI(pixelHeight);
 
 		if (config.log) {std::cout << "Window frame created" << std::endl;}
 
@@ -194,6 +201,23 @@ namespace Limcore
 		return (glfwWindowShouldClose(windowData));
 	}
 
+	void Window::Resized()
+	{
+		assert(windowData != nullptr);
+
+		int screenWidth;
+		int screenHeight;
+		glfwGetWindowSize(windowData, &screenWidth, &screenHeight);
+		config.windowWidth = CUI(screenWidth);
+		config.windowHeight = CUI(screenHeight);
+
+		int pixelWidth;
+		int pixelHeight;
+		glfwGetFramebufferSize(windowData, &pixelWidth, &pixelHeight);
+		config.viewportWidth = CUI(pixelWidth);
+		config.viewportHeight = CUI(pixelHeight);
+	}
+
 	std::ostream& operator<<(std::ostream& out, const Window& window)
 	{
 		const WindowConfig& config = window.GetConfig();
@@ -202,8 +226,10 @@ namespace Limcore
 		out << ENUM_VAL(config.presentMode) << std::endl;
 		out << ENUM_VAL(config.surfaceFormat.format) << std::endl;
 		out << ENUM_VAL(config.surfaceFormat.colorSpace) << std::endl;
-		out << VAR_VAL(config.width) << std::endl;
-		out << VAR_VAL(config.height) << std::endl;
+		out << VAR_VAL(config.windowWidth) << std::endl;
+		out << VAR_VAL(config.windowHeight) << std::endl;
+		out << VAR_VAL(config.viewportWidth) << std::endl;
+		out << VAR_VAL(config.viewportHeight) << std::endl;
 
 		return (out);
 	}

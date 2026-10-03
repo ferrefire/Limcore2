@@ -113,11 +113,13 @@ namespace Limcore
 		if (state != RendererState::Waited)
 			{return (std::unexpected(Error(ErrorCode::Unknown, std::string("Renderer state is not Waited: ").append(EnumName(state)))));}
 
+		swapchainOutOfDate = false;
+
 		presentIndex = NO_PRESENT_IMAGE;
 		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentIndex);
-		RETURN_VK_ERROR(result, "Failed to acquire next image")
-		if (presentIndex == NO_PRESENT_IMAGE) {return (std::unexpected(Error(ErrorCode::VulkanError, "Failed to acquire next image")));}
-
+		if (IsSwapchainError(result)) {swapchainOutOfDate = true;}
+		if (result != VK_SUBOPTIMAL_KHR) {RETURN_VK_ERROR(result, "Failed to acquire next image")}
+		
 		result = vkResetCommandPool(logicalDevice, commandPools[frameIndex], 0);
 		RETURN_VK_ERROR(result, "Failed to reset command pool")
 
@@ -128,34 +130,6 @@ namespace Limcore
 
 		return (Result());
 	}
-
-	/*Result Renderer::BeginRendering(const uint32_t& presentImageIndex, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent)
-	{
-		assert(presentImageIndex < swapchainImages.size());
-		assert(!swapchainImages.empty());
-		assert(!swapchainViews.empty());
-
-		TransitionToColor(swapchainImages[presentImageIndex]);
-
-		VkRenderingAttachmentInfo colorAttachment{};
-		colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		colorAttachment.imageView = swapchainViews[presentImageIndex];
-		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.clearValue = {{1.0f, 1.0f, 1.0f, 1.0f}};
-
-		VkRenderingInfo renderInfo{};
-		renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-		renderInfo.renderArea = {{0, 0}, swapchainExtent};
-		renderInfo.layerCount = 1;
-		renderInfo.colorAttachmentCount = 1;
-		renderInfo.pColorAttachments = &colorAttachment;
-
-		vkCmdBeginRendering(commandBuffers[frameIndex], &renderInfo);
-
-		return (Result());
-	}*/
 
 	Result Renderer::EndFrame(const VkQueue& submitQueue, const std::vector<VkSemaphore>& canPresentSemaphores, std::vector<VkSemaphoreSubmitInfo> waitInfos, std::vector<VkSemaphoreSubmitInfo> signalInfos)
 	{
@@ -212,7 +186,8 @@ namespace Limcore
 		presentInfo.pNext = nullptr;
 
 		VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
-		RETURN_VK_ERROR(result, "Failed to present to queue")
+		if (IsSwapchainError(result)) {swapchainOutOfDate = true;}
+		else {RETURN_VK_ERROR(result, "Failed to present to queue")}
 
 		frameIndex = (frameIndex + 1) % config.maxFramesInFlight;
 
@@ -220,124 +195,4 @@ namespace Limcore
 
 		return (Result());
 	}
-
-	/*Result Renderer::RecordCommands(const VkSwapchainKHR& swapchain, const std::vector<VkImage>& swapchainImages, const std::vector<VkImageView>& swapchainViews, const VkExtent2D& swapchainExtent, const std::vector<VkSemaphore>& canPresentSemaphores, const VkQueue& graphicsQueue, const VkQueue& presentQueue)
-	{
-		assert(logicalDevice != nullptr);
-		assert(swapchain != nullptr);
-		assert(!swapchainImages.empty());
-		assert(!swapchainViews.empty());
-		assert(!canPresentSemaphores.empty());
-		assert(graphicsQueue != nullptr);
-		assert(presentQueue != nullptr);
-
-		uint32_t presentImageIndex;
-		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentImageIndex);
-		RETURN_VK_ERROR(result, "Failed to acquire next image")
-
-		result = vkResetCommandPool(logicalDevice, commandPools[frameIndex], 0);
-		RETURN_VK_ERROR(result, "Failed to reset command pool")
-
-		BeginCommand(commandBuffers[frameIndex]);
-
-		TransitionToColor(swapchainImages[presentImageIndex]);
-
-		VkRenderingAttachmentInfo colorAttachment{};
-		colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		colorAttachment.imageView = swapchainViews[presentImageIndex];
-		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.clearValue = {{1.0f, 1.0f, 1.0f, 1.0f}};
-
-		VkRenderingInfo renderInfo{};
-		renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-		renderInfo.renderArea = {{0, 0}, swapchainExtent};
-		renderInfo.layerCount = 1;
-		renderInfo.colorAttachmentCount = 1;
-		renderInfo.pColorAttachments = &colorAttachment;
-
-		vkCmdBeginRendering(commandBuffers[frameIndex], &renderInfo);
-		vkCmdEndRendering(commandBuffers[frameIndex]);
-
-		TransitionToPresent(swapchainImages[presentImageIndex]);
-
-		EndCommand(commandBuffers[frameIndex]);
-
-		VkSemaphoreSubmitInfo waitInfo{};
-		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		waitInfo.semaphore = canRenderSemaphores[frameIndex];
-		waitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		waitInfo.pNext = nullptr;
-
-		VkSemaphoreSubmitInfo signalInfo{};
-		signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signalInfo.semaphore = canPresentSemaphores[presentImageIndex];
-		signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-		signalInfo.pNext = nullptr;
-
-		SubmitCommand(commandBuffers[frameIndex], graphicsQueue, {waitInfo}, {signalInfo}, frameFences[frameIndex]);
-
-		VkPresentInfoKHR presentInfo{};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &swapchain;
-		presentInfo.pImageIndices = &presentImageIndex;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &canPresentSemaphores[presentImageIndex];
-		presentInfo.pNext = nullptr;
-
-		result = vkQueuePresentKHR(presentQueue, &presentInfo);
-		if (result != VK_SUCCESS) {return (std::unexpected(Error{ErrorCode::VulkanError, "Failed to present to queue", result}));}
-
-		frameIndex = (frameIndex + 1) % config.maxFramesInFlight;
-
-		return (Result());
-	}*/
-
-	/*void Renderer::TransitionToColor(const VkImage& image)
-	{
-		VkImageMemoryBarrier2 barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-		barrier.srcAccessMask = 0;
-		barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-
-		VkDependencyInfo dependency{};
-		dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		dependency.imageMemoryBarrierCount = 1;
-		dependency.pImageMemoryBarriers = &barrier;
-
-		vkCmdPipelineBarrier2(commandBuffers[frameIndex], &dependency);
-	}
-
-	void Renderer::TransitionToPresent(const VkImage& image)
-	{
-		VkImageMemoryBarrier2 barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-		barrier.dstAccessMask = 0;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-
-		VkDependencyInfo dependency{};
-		dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		dependency.imageMemoryBarrierCount = 1;
-		dependency.pImageMemoryBarriers = &barrier;
-
-		vkCmdPipelineBarrier2(commandBuffers[frameIndex], &dependency);
-	}*/
 }
