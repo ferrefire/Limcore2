@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 
 #include "printer.hpp"
+#include "utility.hpp"
 
 #include <cassert>
 #include <string>
@@ -89,6 +90,39 @@ namespace Limcore
 		logicalDevice = nullptr;
 	}
 
+	Result Renderer::CreateRenderingAttachment(VkRenderingAttachmentInfo& createdAttachment, const RendererAttachment& rendererAttachment)
+	{
+		const std::vector<VkImageView>& views = *rendererAttachment.views;
+		uint32_t viewIndex = frameIndex;
+		if (rendererAttachment.indexType == AttachmentIndexType::PresentIndex) {viewIndex = presentIndex;}
+		if (viewIndex >= views.size())
+			{return (std::unexpected(Error(ErrorCode::Unknown, "Renderer pass attachment views has incorrect size")));}
+
+		createdAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		createdAttachment.imageView = views[viewIndex];
+		createdAttachment.imageLayout = rendererAttachment.layout;
+		createdAttachment.loadOp = rendererAttachment.loadOperation;
+		createdAttachment.storeOp = rendererAttachment.storeOperation;
+		createdAttachment.clearValue = rendererAttachment.clearValue;
+
+		return (Result());
+	}
+
+	Result Renderer::CreateRenderingAttachments(std::vector<VkRenderingAttachmentInfo>& createdAttachments, const std::vector<RendererAttachment>& rendererAttachments)
+	{
+		assert(createdAttachments.empty());
+
+		createdAttachments.resize(rendererAttachments.size());
+
+		for (size_t i = 0; i < createdAttachments.size(); i++)
+		{
+			Result result = CreateRenderingAttachment(createdAttachments[i], rendererAttachments[i]);
+			if (!result) {return (result);}
+		}
+
+		return (Result());
+	}
+
 	Result Renderer::WaitForFrame()
 	{
 		assert(logicalDevice != nullptr);
@@ -127,6 +161,58 @@ namespace Limcore
 		if (!beginning) {return (beginning);}
 
 		state = RendererState::Began;
+
+		return (Result());
+	}
+
+	Result Renderer::RenderFrame()
+	{
+		for (const RendererPass& rendererPass : rendererPasses)
+		{
+			if (rendererPass.extent == nullptr)
+				{return (std::unexpected(Error(ErrorCode::Unknown, "Renderer pass has no extent")));}
+
+			std::vector<VkRenderingAttachmentInfo> colorAttachments;
+			VkRenderingAttachmentInfo depthAttachment;
+			VkRenderingAttachmentInfo stencilAttachment;
+
+			Result result = CreateRenderingAttachments(colorAttachments, rendererPass.colorAttachments);
+			RETURN_ERROR(result, "Failed to create color attachments")
+
+			if (rendererPass.useDepth)
+			{
+				result = CreateRenderingAttachment(depthAttachment, rendererPass.depthAttachment);
+				RETURN_ERROR(result, "Failed to create depth attachment")
+			}
+			
+			if (rendererPass.useStencil)
+			{
+				result = CreateRenderingAttachment(stencilAttachment, rendererPass.stencilAttachment);
+				RETURN_ERROR(result, "Failed to create stencil attachment")
+			}
+
+			VkRenderingInfo renderInfo{};
+			renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+			renderInfo.renderArea = {{0, 0}, *rendererPass.extent};
+			renderInfo.layerCount = 1;
+			renderInfo.colorAttachmentCount = CUI(colorAttachments.size());
+			renderInfo.pColorAttachments = renderInfo.colorAttachmentCount > 0 ? colorAttachments.data() : nullptr;
+			renderInfo.pDepthAttachment = rendererPass.useDepth ? &depthAttachment : nullptr;
+			renderInfo.pStencilAttachment = rendererPass.useStencil ? &stencilAttachment : nullptr;
+
+			for (std::function<void(const VkCommandBuffer&, const uint32_t&, const uint32_t&)> call : rendererPass.preRenderingCalls)
+				{call(commandBuffers[frameIndex], frameIndex, presentIndex);}
+
+			vkCmdBeginRendering(commandBuffers[frameIndex], &renderInfo);
+
+			for (std::function<void(const VkCommandBuffer&, const uint32_t&, const uint32_t&)> call : rendererPass.renderingCalls)
+				{call(commandBuffers[frameIndex], frameIndex, presentIndex);}
+
+			vkCmdEndRendering(commandBuffers[frameIndex]);
+
+			for (std::function<void(const VkCommandBuffer&, const uint32_t&, const uint32_t&)> call : rendererPass.postRenderingCalls)
+				{call(commandBuffers[frameIndex], frameIndex, presentIndex);}
+		}
 
 		return (Result());
 	}

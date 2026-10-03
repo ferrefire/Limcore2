@@ -57,9 +57,7 @@ namespace Limcore
 			[[nodiscard]] const VkSemaphore& GetSemaphore(uint32_t index) const {return (canPresentSemaphores[index]);}
 			[[nodiscard]] const std::vector<VkSemaphore>& GetSemaphores() const noexcept {return (canPresentSemaphores);}
 
-			void TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer);
-			//void TransitionImageToColor(const Renderer& renderer) {TransitionImageToColor(renderer.GetPresentIndex(), renderer.GetCommandBuffer());}
-			void TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer);
-			//void TransitionImageToPresent(const Renderer& renderer) {TransitionImageToPresent(renderer.GetPresentIndex(), renderer.GetCommandBuffer());}
+			void TransitionImageToColor(const VkCommandBuffer& commandBuffer, const uint32_t& frameIndex, const uint32_t& presentIndex);
+			void TransitionImageToPresent(const VkCommandBuffer& commandBuffer, const uint32_t& frameIndex, const uint32_t& presentIndex);
 	};
 }

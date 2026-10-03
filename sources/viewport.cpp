@@ -264,9 +264,9 @@ namespace Limcore
 		return (true);
 	}
 
-	void Viewport::TransitionImageToColor(const uint32_t& index, const VkCommandBuffer& commandBuffer)
+	void Viewport::TransitionImageToColor(const VkCommandBuffer& commandBuffer, const uint32_t& frameIndex, const uint32_t& presentIndex)
 	{
-		assert(index < images.size());
+		assert(presentIndex < images.size());
 		assert(commandBuffer != nullptr);
 
 		VkImageMemoryBarrier2 barrier{};
@@ -279,7 +279,7 @@ namespace Limcore
 		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = images[index];
+		barrier.image = images[presentIndex];
 		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
 		VkDependencyInfo dependency{};
@@ -290,9 +290,9 @@ namespace Limcore
 		vkCmdPipelineBarrier2(commandBuffer, &dependency);
 	}
 
-	void Viewport::TransitionImageToPresent(const uint32_t& index, const VkCommandBuffer& commandBuffer)
+	void Viewport::TransitionImageToPresent(const VkCommandBuffer& commandBuffer, const uint32_t& frameIndex, const uint32_t& presentIndex)
 	{
-		assert(index < images.size());
+		assert(presentIndex < images.size());
 		assert(commandBuffer != nullptr);
 
 		VkImageMemoryBarrier2 barrier{};
@@ -305,7 +305,7 @@ namespace Limcore
 		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = images[index];
+		barrier.image = images[presentIndex];
 		barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
 		VkDependencyInfo dependency{};
