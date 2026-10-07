@@ -25,6 +25,7 @@ namespace Limcore
 	struct RendererConfig
 	{
 		uint32_t maxFramesInFlight = 2;
+		std::function<void()> swapchainRecreateCallback;
 		bool log = false;
 	};
 

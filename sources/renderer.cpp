@@ -18,6 +18,8 @@ namespace Limcore
 		this->logicalDevice = logicalDevice;
 		config = rendererConfig;
 
+		if (!config.swapchainRecreateCallback) {std::cerr << "Warning: Swapchain recreate callback is not set." << std::endl;}
+
 		Result result = CreateFences(frameFences, logicalDevice, config.maxFramesInFlight);
 		RETURN_ERROR(result, message)
 
@@ -136,6 +138,12 @@ namespace Limcore
 
 		state = RendererState::Waited;
 
+		if (swapchainOutOfDate)
+		{
+			if (!config.swapchainRecreateCallback) {return (std::unexpected(Error(ErrorCode::SwapchainError, "Failed to recreate swapchain: Swapchain recreate callback is not set")));}
+			else {config.swapchainRecreateCallback();}
+		}
+
 		return (Result());
 	}
 
@@ -151,8 +159,20 @@ namespace Limcore
 
 		presentIndex = NO_PRESENT_IMAGE;
 		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentIndex);
-		if (IsSwapchainError(result)) {swapchainOutOfDate = true;}
-		if (result != VK_SUBOPTIMAL_KHR) {RETURN_VK_ERROR(result, "Failed to acquire next image")}
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			if (!config.swapchainRecreateCallback) 
+			{
+				return (std::unexpected(Error(ErrorCode::SwapchainError, "Failed to recreate swapchain: Swapchain recreate callback is not set", result)));
+			}
+			else
+			{
+				config.swapchainRecreateCallback();
+				return (BeginFrame(swapchain));
+			}
+		}
+		else if (result == VK_SUBOPTIMAL_KHR) {swapchainOutOfDate = true;}
+		else {RETURN_VK_ERROR(result, "Failed to acquire next image")}
 		
 		result = vkResetCommandPool(logicalDevice, commandPools[frameIndex], 0);
 		RETURN_VK_ERROR(result, "Failed to reset command pool")
