@@ -17,42 +17,30 @@ namespace Limcore
 	class Application
 	{
 		private:
-			bool active = false;
-
-			Device device;
+			const Device& device;
 			Window window;
 			Viewport viewport;
 			Renderer renderer;
 
+			bool active = false;
+
 		public:
-			Application() noexcept = default;
+			Application(const Device& device) noexcept : device(device) {}
 			~Application() noexcept {Destroy();}
 
 			Application(const Application&) = delete;
 			Application& operator=(const Application&) = delete;
 
 			Application(Application&& other) noexcept :
-				active(std::exchange(other.active, false)),
-				device(std::exchange(other.device, {})),
+				device(other.device),
 				window(std::exchange(other.window, {})),
 				viewport(std::exchange(other.viewport, {})),
-				renderer(std::exchange(other.renderer, {})) {}
+				renderer(std::exchange(other.renderer, {})),
+				active(std::exchange(other.active, false)) {}
 			
-			Application& operator=(Application&& other) noexcept
-			{
-				if (this != &other)
-				{
-					Destroy();
-					active = std::exchange(other.active, false);
-					device = std::exchange(other.device, {});
-					window = std::exchange(other.window, {});
-					viewport = std::exchange(other.viewport, {});
-					renderer = std::exchange(other.renderer, {});
-				}
-				return (*this);
-			}
+			Application& operator=(Application&& other) = delete;
 
-			[[nodiscard]] Result Create(const VkInstance& instance, DeviceType deviceType, DeviceFeatures deviceFeatures, WindowConfig windowConfig, RendererConfig rendererConfig);
+			[[nodiscard]] Result Create(const VkInstance& instance, WindowConfig windowConfig, RendererConfig rendererConfig);
 
 			void Destroy() noexcept;
 

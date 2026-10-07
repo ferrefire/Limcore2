@@ -9,11 +9,10 @@
 
 namespace Limcore
 {
-	Result Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log) noexcept
+	Result Device::Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, DeviceFeatures features, bool log) noexcept
 	{
 		assert(instance != nullptr);
 		assert(physicalDevice != nullptr);
-		assert(surface != nullptr);
 		assert(this->physicalDevice == nullptr);
 		assert(this->logicalDevice == nullptr);
 
@@ -22,7 +21,7 @@ namespace Limcore
 		this->log = log;
 		this->physicalDevice = physicalDevice;
 
-		Result result = SelectQueues(surface);
+		Result result = SelectQueues();
 		RETURN_ERROR(result, message)
 
 		result = CreateLogical(features);
@@ -98,10 +97,9 @@ namespace Limcore
 		return (Result());
 	}
 
-	Result Device::SelectQueues(const VkSurfaceKHR& surface)
+	Result Device::SelectQueues()
 	{
 		assert(physicalDevice != nullptr);
-		assert(surface != nullptr);
 
 		uint32_t queueCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
@@ -117,9 +115,11 @@ namespace Limcore
 				HasFlag(queueFamilyProperties[i].queueFlags, VK_QUEUE_COMPUTE_BIT) &&
 				(queueFamilyIndex == NO_QUEUE_FAMILY || queueFamilyProperties[queueFamilyIndex].queueCount < queueFamilyProperties[i].queueCount))
 			{
-				VkBool32 canPresent = false;
-				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
-				if (canPresent) {queueFamilyIndex = i;}
+				//VkBool32 canPresent = false;
+				//vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &canPresent);
+				//if (canPresent) {queueFamilyIndex = i;}
+
+				queueFamilyIndex = i;
 			}
 		}
 
@@ -181,16 +181,6 @@ namespace Limcore
 			logicalDevice = nullptr;
 			if (log) {std::cout << "Logical device destroyed" << std::endl;}
 		}
-	}
-
-	bool Device::IsValid() const noexcept
-	{
-		if (physicalDevice == nullptr) {return (false);}
-		if (logicalDevice == nullptr) {return (false);}
-		if (selectedQueueFamilyIndex == NO_QUEUE_FAMILY) {return (false);}
-		if (queues.empty()) {return (false);}
-
-		return (true);
 	}
 
 	std::vector<DeviceInfo> GetAvailableDevices(const VkInstance& instance)

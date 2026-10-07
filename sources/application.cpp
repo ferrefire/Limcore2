@@ -9,19 +9,22 @@
 
 namespace Limcore
 {
-	Result Application::Create(const VkInstance& instance, DeviceType deviceType, DeviceFeatures deviceFeatures, WindowConfig windowConfig, RendererConfig rendererConfig)
+	Result Application::Create(const VkInstance& instance, WindowConfig windowConfig, RendererConfig rendererConfig)
 	{
+		assert(device);
+		assert(instance != nullptr);
+
 		const std::string message = "Failed to create application";
 
-		auto deviceSelection = GetDevice(instance, deviceType, deviceFeatures);
-		RETURN_ERROR(deviceSelection, message)
-		DeviceInfo selectedDevice = deviceSelection.value();
+		//auto deviceSelection = GetDevice(instance, deviceType, deviceFeatures);
+		//RETURN_ERROR(deviceSelection, message)
+		//DeviceInfo selectedDevice = deviceSelection.value();
 
-		Result result = window.Create(instance, selectedDevice.physicalDevice, windowConfig);
+		Result result = window.Create(instance, device, windowConfig);
 		RETURN_ERROR(result, message)
 
-		result = device.Create(instance, selectedDevice.physicalDevice, window.GetSurface(), deviceFeatures);
-		RETURN_ERROR(result, message)
+		//result = device.Create(instance, selectedDevice.physicalDevice, window.GetSurface(), deviceFeatures);
+		//RETURN_ERROR(result, message)
 
 		result = viewport.Create(device, window);
 		RETURN_ERROR(result, message)
@@ -52,7 +55,7 @@ namespace Limcore
 		renderer.Destroy();
 		viewport.Destroy();
 		window.Destroy();
-		device.Destroy();
+		//device.Destroy();
 	}
 
 	void Application::RecreateViewport()

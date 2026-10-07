@@ -1,7 +1,6 @@
 #pragma once
 
 #include "error.hpp"
-#include "window.hpp"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -69,7 +68,7 @@ namespace Limcore
 			bool log = false;
 
 			[[nodiscard]] Result CreateLogical(DeviceFeatures features);
-			[[nodiscard]] Result SelectQueues(const VkSurfaceKHR& surface); //Todo: add manual selection and better auto selection.
+			[[nodiscard]] Result SelectQueues(); //Todo: add manual selection and better auto selection.
 			[[nodiscard]] Result RetrieveQueues();
 
 		public:
@@ -102,13 +101,13 @@ namespace Limcore
 				return (*this);
 			}
 
-			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log = false) noexcept;
-			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const Window& window, DeviceFeatures features, bool log = false) noexcept
-				{return (Create(instance, physicalDevice, window.GetSurface(), features, log));}
+			[[nodiscard]] explicit operator bool() const noexcept
+				{return (physicalDevice != nullptr && logicalDevice != nullptr && selectedQueueFamilyIndex != NO_QUEUE_FAMILY && !queues.empty());}
+
+			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, DeviceFeatures features, bool log = false) noexcept;
 
 			void Destroy() noexcept;
 
-			[[nodiscard]] bool IsValid() const noexcept;
 			[[nodiscard]] const VkPhysicalDevice& GetPhysicalDevice() const noexcept {return (physicalDevice);}
 			[[nodiscard]] const VkDevice& GetLogicalDevice() const noexcept {return (logicalDevice);}
 			[[nodiscard]] const uint32_t& GetSelectedQueueFamily() const noexcept {return (selectedQueueFamilyIndex);}

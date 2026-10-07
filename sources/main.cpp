@@ -10,12 +10,15 @@
 #include <vector>
 
 VkInstance instance;
+Limcore::Device device;
 std::vector<Limcore::Application> applications;
 
 void Clean()
 {
 	for (Limcore::Application& application : applications) {application.Destroy();}
 	applications.clear();
+
+	device.Destroy();
 
 	vkDestroyInstance(instance, nullptr);
 
@@ -30,6 +33,12 @@ int main()
 	deviceFeatures.synchronization2 = true;
 	deviceFeatures.dynamicRendering = true;
 
+	auto deviceSelection = GetDevice(instance, Limcore::DeviceType::Best, deviceFeatures);
+	if (!deviceSelection) {deviceSelection.error().Print();}
+	Limcore::DeviceInfo selectedDevice = deviceSelection.value();
+	auto deviceCreation = device.Create(instance, selectedDevice.physicalDevice, deviceFeatures);
+	if (!deviceCreation) {deviceCreation.error().Print();}
+
 	Limcore::WindowConfig windowConfig{};
 	windowConfig.log = true;
 	windowConfig.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
@@ -37,11 +46,11 @@ int main()
 	Limcore::RendererConfig rendererConfig{};
 	rendererConfig.log = true;
 
-	applications.resize(2);
+	for (size_t i = 0; i < 1; i++) {applications.push_back(device);}
 
 	for (Limcore::Application& application : applications)
 	{
-		Limcore::Result applicationCreation = application.Create(instance, Limcore::DeviceType::Best, deviceFeatures, windowConfig, rendererConfig);
+		Limcore::Result applicationCreation = application.Create(instance, windowConfig, rendererConfig);
 		if (!applicationCreation) {applicationCreation.error().Print();}
 	}
 	

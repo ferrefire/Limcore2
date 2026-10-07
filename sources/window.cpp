@@ -8,10 +8,11 @@
 
 namespace Limcore
 {
-	Result Window::Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig)
+	Result Window::Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, WindowConfig windowConfig)
 	{
 		assert(vulkanInstance != nullptr);
 		assert(physicalDevice != nullptr);
+		assert(queueFamilyIndex != NO_QUEUE_FAMILY);
 
 		const std::string message = "Failed to create window";
 
@@ -21,7 +22,7 @@ namespace Limcore
 		Result result = CreateFrame();
 		RETURN_ERROR(result, message)
 
-		result = CreateSurface(physicalDevice);
+		result = CreateSurface(physicalDevice, queueFamilyIndex);
 		RETURN_ERROR(result, message)
 
 		result = SelectPresentMode(physicalDevice);
@@ -61,13 +62,18 @@ namespace Limcore
 		return (Result());
 	}
 
-	Result Window::CreateSurface(const VkPhysicalDevice& physicalDevice)
+	Result Window::CreateSurface(const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex)
 	{
 		assert(windowData != nullptr);
 		assert(surface == nullptr);
 
 		VkResult result = glfwCreateWindowSurface(instance, windowData, nullptr, &surface);
 		RETURN_VK_ERROR(result, "Failed to create surface")
+
+		VkBool32 canPresent = false;
+		result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, &canPresent);
+		RETURN_VK_ERROR(result, "Failed to retrieve device queue family surface support")
+		if (!canPresent) {return (std::unexpected(Error(ErrorCode::VulkanError, "Selected device family queue does not support created surface")));}
 
 		if (config.log) {std::cout << "Window surface created" << std::endl;}
 

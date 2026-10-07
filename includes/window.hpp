@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.hpp"
+#include "device.hpp"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -41,7 +42,7 @@ namespace Limcore
 			
 
 			[[nodiscard]] Result CreateFrame();
-			[[nodiscard]] Result CreateSurface(const VkPhysicalDevice& physicalDevice);
+			[[nodiscard]] Result CreateSurface(const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex);
 			[[nodiscard]] Result SelectPresentMode(const VkPhysicalDevice& physicalDevice);
 			[[nodiscard]] Result SelectSurfaceFormat(const VkPhysicalDevice& physicalDevice);
 
@@ -71,7 +72,9 @@ namespace Limcore
 				return (*this);
 			}
 
-			[[nodiscard]] Result Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
+			[[nodiscard]] Result Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, WindowConfig windowConfig);
+			[[nodiscard]] Result Create(const VkInstance& vulkanInstance, const Device& device, WindowConfig windowConfig)
+				{return (Create(vulkanInstance, device.GetPhysicalDevice(), device.GetSelectedQueueFamily(), windowConfig));}
 
 			void Destroy() noexcept;
 
