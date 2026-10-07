@@ -7,6 +7,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <utility>
+
 namespace Limcore
 {
 	class Viewport
@@ -35,7 +37,32 @@ namespace Limcore
 			Viewport(const Viewport&) = delete;
 			Viewport& operator=(const Viewport&) = delete;
 
-			//Todo: implement move operators.
+			Viewport(Viewport&& other) noexcept :
+				logicalDevice(std::exchange(other.logicalDevice, nullptr)),
+				swapchain(std::exchange(other.swapchain, nullptr)),
+				oldSwapchain(std::exchange(other.oldSwapchain, nullptr)),
+				extent(std::exchange(other.extent, {})),
+				images(std::exchange(other.images, {})),
+				views(std::exchange(other.views, {})),
+				canPresentSemaphores(std::exchange(other.canPresentSemaphores, {})),
+				log(std::exchange(other.log, false)) {}
+			
+			Viewport& operator=(Viewport&& other) noexcept
+			{
+				if (this != &other)
+				{
+					Destroy();
+					logicalDevice = std::exchange(other.logicalDevice, nullptr);
+					swapchain = std::exchange(other.swapchain, nullptr);
+					oldSwapchain = std::exchange(other.oldSwapchain, nullptr);
+					extent = std::exchange(other.extent, {});
+					images = std::exchange(other.images, {});
+					views = std::exchange(other.views, {});
+					canPresentSemaphores = std::exchange(other.canPresentSemaphores, {});
+					log = std::exchange(other.log, false);
+				}
+				return (*this);
+			}
 
 			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const VkPhysicalDevice& physicalDevice, const uint32_t& queueFamilyIndex, const VkQueue& graphicsQueue, const VkSurfaceKHR& surface, const WindowConfig& windowConfig, bool log = false);
 			[[nodiscard]] Result Create(const Device& device, const Window& window, bool log = false)

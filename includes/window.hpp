@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <vector>
+#include <utility>
 
 namespace Limcore
 {
@@ -51,7 +52,24 @@ namespace Limcore
 			Window(const Window&) = delete;
 			Window& operator=(const Window&) = delete;
 
-			//Todo: implement move operators.
+			Window(Window&& other) noexcept :
+				instance(std::exchange(other.instance, nullptr)),
+				windowData(std::exchange(other.windowData, nullptr)),
+				surface(std::exchange(other.surface, nullptr)),
+				config(std::exchange(other.config, {})) {}
+			
+			Window& operator=(Window&& other) noexcept
+			{
+				if (this != &other)
+				{
+					Destroy();
+					instance = std::exchange(other.instance, nullptr);
+					windowData = std::exchange(other.windowData, nullptr);
+					surface = std::exchange(other.surface, nullptr);
+					config = std::exchange(other.config, {});
+				}
+				return (*this);
+			}
 
 			[[nodiscard]] Result Create(const VkInstance& vulkanInstance, const VkPhysicalDevice& physicalDevice, WindowConfig windowConfig);
 

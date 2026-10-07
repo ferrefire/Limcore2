@@ -9,6 +9,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
+#include <utility>
 
 namespace Limcore
 {
@@ -78,7 +79,28 @@ namespace Limcore
 			Device(const Device&) = delete;
 			Device& operator=(const Device&) = delete;
 
-			//Todo: implement move operators.
+			Device(Device&& other) noexcept :
+				physicalDevice(std::exchange(other.physicalDevice, nullptr)),
+				logicalDevice(std::exchange(other.logicalDevice, nullptr)),
+				selectedQueueFamilyIndex(std::exchange(other.selectedQueueFamilyIndex, NO_QUEUE_FAMILY)),
+				separateQueues(std::exchange(other.separateQueues, true)),
+				queues(std::exchange(other.queues, {})),
+				log(std::exchange(other.log, false)) {}
+
+			Device& operator=(Device&& other) noexcept
+			{
+				if (this != &other)
+				{
+					Destroy();
+					physicalDevice = std::exchange(other.physicalDevice, nullptr);
+					logicalDevice = std::exchange(other.logicalDevice, nullptr);
+					selectedQueueFamilyIndex = std::exchange(other.selectedQueueFamilyIndex, NO_QUEUE_FAMILY);
+					separateQueues = std::exchange(other.separateQueues, true);
+					queues = std::exchange(other.queues, {});
+					log = std::exchange(other.log, false);
+				}
+				return (*this);
+			}
 
 			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, DeviceFeatures features, bool log = false) noexcept;
 			[[nodiscard]] Result Create(const VkInstance& instance, const VkPhysicalDevice& physicalDevice, const Window& window, DeviceFeatures features, bool log = false) noexcept

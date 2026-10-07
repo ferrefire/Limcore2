@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <functional>
+#include <utility>
 
 namespace Limcore
 {
@@ -25,7 +26,6 @@ namespace Limcore
 	struct RendererConfig
 	{
 		uint32_t maxFramesInFlight = 2;
-		std::function<void()> swapchainRecreateCallback;
 		bool log = false;
 	};
 
@@ -73,6 +73,7 @@ namespace Limcore
 			VkDevice logicalDevice = nullptr;
 
 			RendererConfig config{};
+			std::function<void()> swapchainRecreateCallback;
 			//Todo: Make struct containing all per frame resources.
 			std::vector<VkFence> frameFences;
 			std::vector<VkSemaphore> canRenderSemaphores;
@@ -94,11 +95,44 @@ namespace Limcore
 			Renderer(const Renderer&) = delete;
 			Renderer& operator=(const Renderer&) = delete;
 
-			//Todo: implement move operators.
+			Renderer(Renderer&& other) noexcept :
+				logicalDevice(std::exchange(other.logicalDevice, nullptr)),
+				config(std::exchange(other.config, {})),
+				swapchainRecreateCallback(std::exchange(other.swapchainRecreateCallback, {})),
+				frameFences(std::exchange(other.frameFences, {})),
+				canRenderSemaphores(std::exchange(other.canRenderSemaphores, {})),
+				commandPools(std::exchange(other.commandPools, {})),
+				commandBuffers(std::exchange(other.commandBuffers, {})),
+				rendererPasses(std::exchange(other.rendererPasses, {})),
+				state(std::exchange(other.state, RendererState::Presented)),
+				frameIndex(std::exchange(other.frameIndex, 0)),
+				presentIndex(std::exchange(other.presentIndex, NO_PRESENT_IMAGE)),
+				swapchainOutOfDate(std::exchange(other.swapchainOutOfDate, false)) {}
 
-			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig);
-			[[nodiscard]] Result Create(const Device& device, RendererConfig rendererConfig)
-				{return (Create(device.GetLogicalDevice(), device.GetSelectedQueueFamily(), rendererConfig));}
+			Renderer& operator=(Renderer&& other) noexcept
+			{
+				if (this != &other)
+				{
+					Destroy();
+					logicalDevice = std::exchange(other.logicalDevice, nullptr);
+					config = std::exchange(other.config, {});
+					swapchainRecreateCallback = std::exchange(other.swapchainRecreateCallback, {});
+					frameFences = std::exchange(other.frameFences, {});
+					canRenderSemaphores = std::exchange(other.canRenderSemaphores, {});
+					commandPools = std::exchange(other.commandPools, {});
+					commandBuffers = std::exchange(other.commandBuffers, {});
+					rendererPasses = std::exchange(other.rendererPasses, {});
+					state = std::exchange(other.state, RendererState::Presented);
+					frameIndex = std::exchange(other.frameIndex, 0);
+					presentIndex = std::exchange(other.presentIndex, NO_PRESENT_IMAGE);
+					swapchainOutOfDate = std::exchange(other.swapchainOutOfDate, false);
+				}
+				return (*this);
+			}
+
+			[[nodiscard]] Result Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, std::function<void()> swapchainRecreateCallback, RendererConfig rendererConfig);
+			[[nodiscard]] Result Create(const Device& device, std::function<void()> swapchainRecreateCallback, RendererConfig rendererConfig)
+				{return (Create(device.GetLogicalDevice(), device.GetSelectedQueueFamily(), swapchainRecreateCallback, rendererConfig));}
 
 			void Destroy() noexcept;
 

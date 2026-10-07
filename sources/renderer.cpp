@@ -8,17 +8,19 @@
 
 namespace Limcore
 {
-	Result Renderer::Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, RendererConfig rendererConfig)
+	Result Renderer::Create(const VkDevice& logicalDevice, const uint32_t& queueFamilyIndex, std::function<void()> swapchainRecreateCallback, RendererConfig rendererConfig)
 	{
 		assert(logicalDevice != nullptr);
+		assert(swapchainRecreateCallback);
 		assert(rendererConfig.maxFramesInFlight >= 1 && rendererConfig.maxFramesInFlight <= 3);
 
 		const std::string message = "Failed to create renderer";
 
 		this->logicalDevice = logicalDevice;
+		this->swapchainRecreateCallback = swapchainRecreateCallback;
 		config = rendererConfig;
 
-		if (!config.swapchainRecreateCallback) {std::cerr << "Warning: Swapchain recreate callback is not set." << std::endl;}
+		//if (!swapchainRecreateCallback) {std::cerr << "Warning: Swapchain recreate callback is not set." << std::endl;}
 
 		Result result = CreateFences(frameFences, logicalDevice, config.maxFramesInFlight);
 		RETURN_ERROR(result, message)
@@ -140,8 +142,8 @@ namespace Limcore
 
 		if (swapchainOutOfDate)
 		{
-			if (!config.swapchainRecreateCallback) {return (std::unexpected(Error(ErrorCode::SwapchainError, "Failed to recreate swapchain: Swapchain recreate callback is not set")));}
-			else {config.swapchainRecreateCallback();}
+			if (!swapchainRecreateCallback) {return (std::unexpected(Error(ErrorCode::SwapchainError, "Failed to recreate swapchain: Swapchain recreate callback is not set")));}
+			else {swapchainRecreateCallback();}
 		}
 
 		return (Result());
@@ -161,13 +163,13 @@ namespace Limcore
 		VkResult result = vkAcquireNextImageKHR(logicalDevice, swapchain, ACQUIRE_IMAGE_TIMEOUT, canRenderSemaphores[frameIndex], nullptr, &presentIndex);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			if (!config.swapchainRecreateCallback) 
+			if (!swapchainRecreateCallback)
 			{
 				return (std::unexpected(Error(ErrorCode::SwapchainError, "Failed to recreate swapchain: Swapchain recreate callback is not set", result)));
 			}
 			else
 			{
-				config.swapchainRecreateCallback();
+				swapchainRecreateCallback();
 				return (BeginFrame(swapchain));
 			}
 		}
