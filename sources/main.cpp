@@ -5,6 +5,7 @@
 #include "renderer.hpp"
 #include "command.hpp"
 #include "error.hpp"
+#include "point.hpp"
 
 #include <iostream>
 #include <vector>
@@ -27,6 +28,12 @@ void Clean()
 
 int main()
 {
+	Limcore::point2D p(0, 1);
+	std::cout << "Test: " << p << std::endl;
+	p = Limcore::point4D(10, 11, 12, 13);
+	std::cout << "Test: " << p << std::endl;
+	return (0);
+
 	instance = Limcore::CreateInstance().value();
 
 	Limcore::DeviceFeatures deviceFeatures{};
