@@ -51,6 +51,19 @@ namespace Limcore
 			[[nodiscard]] const bool& IsActive() const noexcept {return (active);}
 	};
 
+	/**
+	 * @brief Checks if the given validation layers are present on the machine.
+	 * @param layers The layers to check.
+	 * @return True if the layers are present.
+	 */
 	[[nodiscard]] bool HasValidationLayers(const std::vector<const char*>& layers);
-	[[nodiscard]] ResultT<VkInstance> CreateInstance(); //Todo: Add a config struct as parameter.
+
+	/**
+	 * @brief Creates a Vulkan instance and initializes GLFW.
+	 * @return Result containing the created instance or an error.
+	 * @todo Add a config struct as parameter.
+	 */
+	[[nodiscard]] ResultT<VkInstance> CreateInstance();
 }
+
+namespace LC = Limcore;

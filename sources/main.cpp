@@ -11,12 +11,12 @@
 #include <vector>
 
 VkInstance instance;
-Limcore::Device device;
-std::vector<Limcore::Application> applications;
+LC::Device device;
+std::vector<LC::Application> applications;
 
 void Clean()
 {
-	for (Limcore::Application& application : applications) {application.Destroy();}
+	for (LC::Application& application : applications) {application.Destroy();}
 	applications.clear();
 
 	device.Destroy();
@@ -28,36 +28,51 @@ void Clean()
 
 int main()
 {
-	Limcore::point2D p(0, 1);
-	std::cout << "Test: " << p << std::endl;
-	p = Limcore::point4D(10, 11, 12, 13);
-	std::cout << "Test: " << p << std::endl;
+	LC::point3D p(0, 1, 0);
+	std::cout << p << std::endl;
+	std::cout << p.Length() << std::endl;
+	p = {1, 1};
+	std::cout << p << std::endl;
+	std::cout << p.Length() << std::endl;
+	p.Normalize();
+	std::cout << p << std::endl;
+	std::cout << p.Length() << std::endl;
+
+	p.x() += 2;
+	std::cout << p << std::endl;
+	p += {-1, 1, 1};
+	std::cout << p << std::endl;
+
+	LC::point3D p2(3, 3, 3);
+	p += p2;
+	std::cout << p << std::endl;
+
 	return (0);
 
-	instance = Limcore::CreateInstance().value();
+	instance = LC::CreateInstance().value();
 
-	Limcore::DeviceFeatures deviceFeatures{};
+	LC::DeviceFeatures deviceFeatures{};
 	deviceFeatures.synchronization2 = true;
 	deviceFeatures.dynamicRendering = true;
 
-	auto deviceSelection = GetDevice(instance, Limcore::DeviceType::Best, deviceFeatures);
+	auto deviceSelection = GetDevice(instance, LC::DeviceType::Best, deviceFeatures);
 	if (!deviceSelection) {deviceSelection.error().Print();}
-	Limcore::DeviceInfo selectedDevice = deviceSelection.value();
+	LC::DeviceInfo selectedDevice = deviceSelection.value();
 	auto deviceCreation = device.Create(instance, selectedDevice.physicalDevice, deviceFeatures);
 	if (!deviceCreation) {deviceCreation.error().Print();}
 
-	Limcore::WindowConfig windowConfig{};
+	LC::WindowConfig windowConfig{};
 	windowConfig.log = true;
 	windowConfig.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
-	Limcore::RendererConfig rendererConfig{};
+	LC::RendererConfig rendererConfig{};
 	rendererConfig.log = true;
 
 	for (size_t i = 0; i < 1; i++) {applications.push_back(device);}
 
-	for (Limcore::Application& application : applications)
+	for (LC::Application& application : applications)
 	{
-		Limcore::Result applicationCreation = application.Create(instance, windowConfig, rendererConfig);
+		LC::Result applicationCreation = application.Create(instance, windowConfig, rendererConfig);
 		if (!applicationCreation) {applicationCreation.error().Print();}
 	}
 	
@@ -66,9 +81,9 @@ int main()
 		glfwPollEvents();
 
 		bool allClosed = true;
-		Limcore::Result result;
+		LC::Result result;
 
-		for (Limcore::Application& application : applications)
+		for (LC::Application& application : applications)
 		{
 			if (application.IsActive())
 			{
