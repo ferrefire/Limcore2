@@ -6,6 +6,7 @@
 #include "command.hpp"
 #include "error.hpp"
 #include "point.hpp"
+#include "mesh.hpp"
 
 #include <iostream>
 #include <vector>
@@ -28,24 +29,16 @@ void Clean()
 
 int main()
 {
-	LC::point3D p(0, 1, 0);
-	std::cout << p << std::endl;
-	std::cout << p.Length() << std::endl;
-	p = {1, 1};
-	std::cout << p << std::endl;
-	std::cout << p.Length() << std::endl;
-	p.Normalize();
-	std::cout << p << std::endl;
-	std::cout << p.Length() << std::endl;
+	LC::point3D p(1, 2, 3);
+	std::cout << p << ": " << sizeof(p) << std::endl;
+	LC::point2D p2(1, 2);
+	std::cout << p2 << ": " << sizeof(p2) << std::endl;
+	LC::dpoint3D p3(1, 2, 3);
+	std::cout << p3 << ": " << sizeof(p3) << std::endl;
 
-	p.x() += 2;
-	std::cout << p << std::endl;
-	p += {-1, 1, 1};
-	std::cout << p << std::endl;
-
-	LC::point3D p2(3, 3, 3);
-	p += p2;
-	std::cout << p << std::endl;
+	LC::Vertex<LC::Position | LC::Normal> v;
+	v.position = p;
+	std::cout << sizeof(v) << std::endl;
 
 	return (0);
 

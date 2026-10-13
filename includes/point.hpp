@@ -41,7 +41,7 @@ namespace Limcore
 			~Point() noexcept = default;
 
 			POINT_INIT_TEMPLATE
-			Point(Init... init) noexcept;
+			explicit Point(Init... init) noexcept;
 
 			POINT_CAST_TEMPLATE
 			Point(const Point<CT, CS>& other) noexcept;
@@ -49,7 +49,7 @@ namespace Limcore
 			Point& operator=(const Point<CT, CS>& other) noexcept;
 
 			POINT_INIT_CAST_TEMPLATE
-			Point(const Point<CT, CS>& other, Init... init) noexcept;
+			explicit Point(const Point<CT, CS>& other, Init... init) noexcept;
 
 			constexpr T& x() noexcept {return (data[0]);}
 			constexpr T& y() noexcept requires(S > 1) {return (data[1]);}
@@ -79,8 +79,8 @@ namespace Limcore
 			constexpr double MagnitudeSquared() const noexcept {return (LengthSquared());}
 			constexpr double Magnitude() const noexcept {return (Length());}
 
-			constexpr void Normalize() noexcept {*this /= Length();}
-			constexpr Point Normalized() const noexcept {return (*this / Length());}
+			constexpr void Normalize() noexcept {*this /= Point(Length());}
+			constexpr Point Normalized() const noexcept {return (*this / Point(Length()));}
 
 			constexpr void Rotate(const double& degrees) noexcept requires(S == 2);
 			constexpr void Rotate(const double& degrees, const Axis& axis) noexcept requires(S == 3);
